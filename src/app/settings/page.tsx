@@ -1,0 +1,412 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import AdminLayout from '@/components/AdminLayout'
+
+interface CapacityRule {
+  id: number
+  days: string[]
+  startTime: string
+  endTime: string
+  capacity: number
+  interval: number
+}
+
+interface Exception {
+  id: number
+  date: string
+}
+
+export default function SettingsDashboard() {
+  const [capacityRules, setCapacityRules] = useState<CapacityRule[]>([])
+  const [exceptions, setExceptions] = useState<Exception[]>([])
+  const [showAddCapacityModal, setShowAddCapacityModal] = useState(false)
+  const [showAddExceptionModal, setShowAddExceptionModal] = useState(false)
+  const [editingRuleId, setEditingRuleId] = useState<number | null>(null)
+
+  // Dummy data - in real app this would come from Supabase
+  useEffect(() => {
+    const dummyCapacityRules: CapacityRule[] = [
+      {
+        id: 1,
+        days: ['tuesday', 'wednesday'],
+        startTime: '17:30',
+        endTime: '22:00',
+        capacity: 120,
+        interval: 30
+      },
+      {
+        id: 2,
+        days: ['tuesday', 'wednesday', 'thursday', 'friday', 'saturday'],
+        startTime: '11:30',
+        endTime: '14:00',
+        capacity: 120,
+        interval: 30
+      },
+      {
+        id: 3,
+        days: ['thursday', 'friday', 'saturday'],
+        startTime: '17:30',
+        endTime: '22:30',
+        capacity: 120,
+        interval: 30
+      },
+      {
+        id: 4,
+        days: ['sunday'],
+        startTime: '17:00',
+        endTime: '22:00',
+        capacity: 120,
+        interval: 30
+      }
+    ]
+
+    const dummyExceptions: Exception[] = [
+      {
+        id: 1,
+        date: '2024-11-15'
+      },
+      {
+        id: 2,
+        date: '2024-12-05'
+      },
+      {
+        id: 3,
+        date: '2025-01-29'
+      }
+    ]
+
+    setCapacityRules(dummyCapacityRules)
+    setExceptions(dummyExceptions)
+  }, [])
+
+  const dayNames = {
+    monday: 'Mo',
+    tuesday: 'Di',
+    wednesday: 'Mi',
+    thursday: 'Do',
+    friday: 'Fr',
+    saturday: 'Sa',
+    sunday: 'So'
+  }
+
+  const openAddCapacityModal = () => {
+    setEditingRuleId(null)
+    setShowAddCapacityModal(true)
+  }
+
+  const openAddExceptionModal = () => {
+    setShowAddExceptionModal(true)
+  }
+
+  const addCapacityRule = () => {
+    // In real app, this would save to Supabase
+    console.log('Adding capacity rule...')
+    setShowAddCapacityModal(false)
+  }
+
+  const addException = () => {
+    // In real app, this would save to Supabase
+    console.log('Adding exception...')
+    setShowAddExceptionModal(false)
+  }
+
+  const editCapacityRule = (ruleId: number) => {
+    setEditingRuleId(ruleId)
+    setShowAddCapacityModal(true)
+  }
+
+  const deleteCapacityRule = (ruleId: number) => {
+    if (confirm('Möchten Sie diese Kapazitäts-Regel wirklich löschen?')) {
+      setCapacityRules(prev => prev.filter(rule => rule.id !== ruleId))
+    }
+  }
+
+  const deleteException = (exceptionId: number) => {
+    if (confirm('Möchten Sie diese Ausnahme wirklich löschen?')) {
+      setExceptions(prev => prev.filter(exception => exception.id !== exceptionId))
+    }
+  }
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('de-DE', {
+      weekday: 'short',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    })
+  }
+
+  return (
+    <AdminLayout>
+      <div className="space-y-8">
+        {/* Header Section */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-light mb-4 font-serif text-white">Einstellungen</h1>
+          <p className="text-lg text-gray-300">Verwalte Kapazitäts-Regeln und geschlossene Tage</p>
+        </div>
+
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                 {/* Capacity Rules Section */}
+                 <div className="rounded-2xl p-6" style={{ backgroundColor: '#1A1A1A', borderWidth: '1px', borderColor: '#242424' }}>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold text-white" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>Kapazitäts-Regeln</h2>
+              <button
+                onClick={openAddCapacityModal}
+                className="text-white px-6 py-3 rounded-lg transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 flex items-center gap-2 font-medium border-2 border-orange-500 hover:bg-orange-500"
+              >
+                <span className="text-lg">+</span>
+                Regel hinzufügen
+              </button>
+            </div>
+            <div className="space-y-4">
+              {capacityRules.map((rule) => (
+                <div
+                  key={rule.id}
+                  className="rounded-2xl p-4 transition-all duration-300 hover:opacity-80"
+                  style={{ backgroundColor: '#242424', borderLeft: '4px solid #4CAF50', borderWidth: '1px', borderColor: '#666666' }}
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
+                    <div className="font-semibold text-orange-500" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
+                      {rule.days.map(day => dayNames[day as keyof typeof dayNames]).join(', ')}
+                    </div>
+                    <div className="text-white text-sm" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
+                      {rule.startTime} - {rule.endTime}
+                    </div>
+                    <div className="font-semibold text-green-500" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
+                      {rule.capacity} Personen
+                    </div>
+                    <div className="text-gray-300 text-sm" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
+                      Alle {rule.interval}min
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => editCapacityRule(rule.id)}
+                        className="text-gray-300 hover:text-orange-500 transition-all duration-300 p-2 rounded-xl hover:bg-gray-600 hover:shadow-lg hover:-translate-y-0.5"
+                        title="Bearbeiten"
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        onClick={() => deleteCapacityRule(rule.id)}
+                        className="text-gray-300 hover:text-red-500 transition-all duration-300 p-2 rounded-xl hover:bg-gray-600 hover:shadow-lg hover:-translate-y-0.5"
+                        title="Löschen"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+                 {/* Exceptions Section */}
+                 <div className="rounded-2xl p-6" style={{ backgroundColor: '#1A1A1A', borderWidth: '1px', borderColor: '#242424' }}>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold text-white" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>Geschlossene Tage</h2>
+              <button
+                onClick={openAddExceptionModal}
+                className="text-white px-6 py-3 rounded-lg transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 flex items-center gap-2 font-medium border-2 border-red-500 hover:bg-red-500"
+              >
+                <span className="text-lg">+</span>
+                Ausnahme hinzufügen
+              </button>
+            </div>
+            <div className="space-y-4">
+              {exceptions.map((exception) => (
+                <div
+                  key={exception.id}
+                  className="rounded-2xl p-4 transition-all duration-300 hover:opacity-80"
+                  style={{ backgroundColor: '#242424', borderLeft: '4px solid #EF4444', borderWidth: '1px', borderColor: '#666666' }}
+                >
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      <div className="font-semibold text-orange-500" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
+                        {formatDate(exception.date)}
+                      </div>
+                      <div className="text-red-500 font-medium" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
+                        Geschlossen
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => deleteException(exception.id)}
+                        className="text-gray-300 hover:text-red-500 transition-all duration-300 p-2 rounded-xl hover:bg-gray-600 hover:shadow-lg hover:-translate-y-0.5"
+                        title="Löschen"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Add Capacity Rule Modal */}
+        {showAddCapacityModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+                 <div className="rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto" style={{ backgroundColor: '#242424', borderWidth: '1px', borderColor: '#666666' }}>
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-xl font-semibold text-white" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
+                    {editingRuleId ? 'Kapazitäts-Regel bearbeiten' : 'Kapazitäts-Regel hinzufügen'}
+                  </h3>
+                  <button
+                    onClick={() => setShowAddCapacityModal(false)}
+                    className="text-gray-300 hover:text-orange-500 text-3xl transition-colors duration-300 hover:bg-gray-700 rounded-full w-10 h-10 flex items-center justify-center"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="space-y-6">
+                  {/* Days Selection */}
+                  <div>
+                    <label className="block text-sm text-white mb-3 font-medium">Wochentage</label>
+                    <div className="grid grid-cols-7 gap-3">
+                      {Object.entries(dayNames).map(([key, name]) => (
+                        <label
+                          key={key}
+                          className="flex items-center justify-center p-4 border-2 border-gray-500 rounded-xl cursor-pointer transition-all duration-300 hover:border-orange-500 hover:bg-orange-600 hover:bg-opacity-20 hover:shadow-lg hover:-translate-y-0.5"
+                          style={{ backgroundColor: '#1A1A1A' }}
+                        >
+                          <input
+                            type="checkbox"
+                            value={key}
+                            className="mr-2 accent-orange-500"
+                          />
+                          <span className="text-white text-sm font-medium">{name}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Time Range */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-white mb-2 font-medium">Von</label>
+                      <input
+                        type="time"
+                        defaultValue="17:30"
+                          className="w-full border border-gray-500 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500 focus:ring-opacity-20 transition-all duration-300"
+                          style={{ backgroundColor: '#242424' }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-white mb-2 font-medium">Bis</label>
+                      <input
+                        type="time"
+                        defaultValue="22:00"
+                          className="w-full border border-gray-500 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500 focus:ring-opacity-20 transition-all duration-300"
+                          style={{ backgroundColor: '#242424' }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Capacity and Interval */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-white mb-2 font-medium">Kapazität (Personen)</label>
+                      <input
+                        type="number"
+                        placeholder="120"
+                        min="1"
+                        max="1000"
+                          className="w-full border border-gray-500 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500 focus:ring-opacity-20 transition-all duration-300"
+                          style={{ backgroundColor: '#242424' }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-white mb-2 font-medium">Intervall (Minuten)</label>
+                      <select
+                        defaultValue="30"
+                          className="w-full border border-gray-500 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500 focus:ring-opacity-20 transition-all duration-300"
+                          style={{ backgroundColor: '#242424' }}
+                      >
+                        <option value="15">15 Minuten</option>
+                        <option value="30">30 Minuten</option>
+                        <option value="45">45 Minuten</option>
+                        <option value="60">60 Minuten</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex justify-end gap-4 mt-6 pt-4 border-t border-gray-600">
+                  <button
+                    onClick={() => setShowAddCapacityModal(false)}
+                    className="px-6 py-3 border border-gray-500 text-white rounded-xl transition-all duration-300 hover:opacity-80 font-medium"
+                    style={{ backgroundColor: '#242424', fontSize: '16px', fontWeight: '300' }}
+                  >
+                    Abbrechen
+                  </button>
+                  <button
+                    onClick={addCapacityRule}
+                    className="px-6 py-3 text-white rounded-xl transition-all duration-300 hover:opacity-80 font-medium"
+                    style={{ backgroundColor: '#FF6B00', fontSize: '16px', fontWeight: '600' }}
+                  >
+                    {editingRuleId ? 'Speichern' : 'Hinzufügen'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Add Exception Modal */}
+        {showAddExceptionModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+                 <div className="rounded-2xl max-w-md w-full shadow-2xl" style={{ backgroundColor: '#2D2D2D', boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)' }}>
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-xl font-semibold text-white font-serif">Geschlossenen Tag hinzufügen</h3>
+                  <button
+                    onClick={() => setShowAddExceptionModal(false)}
+                    className="text-gray-300 hover:text-orange-500 text-3xl transition-colors duration-300 hover:bg-gray-700 rounded-full w-10 h-10 flex items-center justify-center"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm text-white mb-2 font-medium">Datum</label>
+                    <input
+                      type="date"
+                          className="w-full border border-gray-500 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500 focus:ring-opacity-20 transition-all duration-300"
+                          style={{ backgroundColor: '#242424' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex justify-end gap-4 mt-6 pt-4 border-t border-gray-600">
+                  <button
+                    onClick={() => setShowAddExceptionModal(false)}
+                    className="px-6 py-3 border border-gray-500 text-white rounded-xl transition-all duration-300 hover:opacity-80 font-medium"
+                    style={{ backgroundColor: '#242424', fontSize: '16px', fontWeight: '300' }}
+                  >
+                    Abbrechen
+                  </button>
+                  <button
+                    onClick={addException}
+                    className="px-6 py-3 text-white rounded-xl transition-all duration-300 hover:opacity-80 font-medium"
+                    style={{ backgroundColor: '#FF6B00', fontSize: '16px', fontWeight: '600' }}
+                  >
+                    Hinzufügen
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </AdminLayout>
+  )
+}
