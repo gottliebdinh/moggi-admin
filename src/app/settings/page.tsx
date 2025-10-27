@@ -4,90 +4,126 @@ import { useState, useEffect } from 'react'
 import AdminLayout from '@/components/AdminLayout'
 
 interface CapacityRule {
-  id: number
-  days: string[]
-  startTime: string
-  endTime: string
+  id: string
+  days: string | string[] // Kann JSON-String oder Array sein
+  start_time: string
+  end_time: string
   capacity: number
-  interval: number
+  interval_minutes: number
 }
 
 interface Exception {
-  id: number
+  id: string
   date: string
 }
+
+// Dummy-Daten als Konstanten
+const dummyCapacityRules: CapacityRule[] = [
+  {
+    id: 1,
+    days: ['tuesday', 'wednesday'],
+    startTime: '17:30',
+    endTime: '22:00',
+    capacity: 120,
+    interval: 30
+  },
+  {
+    id: 2,
+    days: ['tuesday', 'wednesday', 'thursday', 'friday', 'saturday'],
+    startTime: '11:30',
+    endTime: '14:00',
+    capacity: 120,
+    interval: 30
+  },
+  {
+    id: 3,
+    days: ['thursday', 'friday', 'saturday'],
+    startTime: '17:30',
+    endTime: '22:30',
+    capacity: 120,
+    interval: 30
+  }
+]
+
+const dummyExceptions: Exception[] = [
+  { id: 1, date: '2024-12-25' },
+  { id: 2, date: '2024-12-26' },
+  { id: 3, date: '2024-01-01' }
+]
 
 export default function SettingsDashboard() {
   const [capacityRules, setCapacityRules] = useState<CapacityRule[]>([])
   const [exceptions, setExceptions] = useState<Exception[]>([])
   const [showAddCapacityModal, setShowAddCapacityModal] = useState(false)
   const [showAddExceptionModal, setShowAddExceptionModal] = useState(false)
-  const [editingRuleId, setEditingRuleId] = useState<number | null>(null)
+  const [editingRuleId, setEditingRuleId] = useState<string | null>(null)
+  
+  // Form states for capacity rules
+  const [newCapacityRule, setNewCapacityRule] = useState<{
+    days: string[]
+    startTime: string
+    endTime: string
+    capacity: number
+    interval: number
+  }>({
+    days: [],
+    startTime: '17:30',
+    endTime: '22:00',
+    capacity: 120,
+    interval: 30
+  })
+  
+  // Form states for exceptions
+  const [newException, setNewException] = useState<Partial<Exception>>({
+    date: ''
+  })
 
-  // Dummy data - in real app this would come from Supabase
+  // Lade Daten von der API
   useEffect(() => {
-    const dummyCapacityRules: CapacityRule[] = [
-      {
-        id: 1,
-        days: ['tuesday', 'wednesday'],
-        startTime: '17:30',
-        endTime: '22:00',
-        capacity: 120,
-        interval: 30
-      },
-      {
-        id: 2,
-        days: ['tuesday', 'wednesday', 'thursday', 'friday', 'saturday'],
-        startTime: '11:30',
-        endTime: '14:00',
-        capacity: 120,
-        interval: 30
-      },
-      {
-        id: 3,
-        days: ['thursday', 'friday', 'saturday'],
-        startTime: '17:30',
-        endTime: '22:30',
-        capacity: 120,
-        interval: 30
-      },
-      {
-        id: 4,
-        days: ['sunday'],
-        startTime: '17:00',
-        endTime: '22:00',
-        capacity: 120,
-        interval: 30
-      }
-    ]
-
-    const dummyExceptions: Exception[] = [
-      {
-        id: 1,
-        date: '2024-11-15'
-      },
-      {
-        id: 2,
-        date: '2024-12-05'
-      },
-      {
-        id: 3,
-        date: '2025-01-29'
-      }
-    ]
-
-    setCapacityRules(dummyCapacityRules)
-    setExceptions(dummyExceptions)
+    loadSettings()
   }, [])
 
+  const loadSettings = async () => {
+    try {
+      const response = await fetch('/api/settings')
+      const data = await response.json()
+      
+      setCapacityRules(data.rules || [])
+      setExceptions(data.exceptions || [])
+    } catch (error) {
+      console.error('Error loading settings:', error)
+      // Fallback zu leeren Arrays
+      setCapacityRules([])
+      setExceptions([])
+    }
+  }
+
   const dayNames = {
-    monday: 'Mo',
-    tuesday: 'Di',
-    wednesday: 'Mi',
-    thursday: 'Do',
-    friday: 'Fr',
-    saturday: 'Sa',
-    sunday: 'So'
+    'Montag': 'MO.',
+    'Dienstag': 'DI.',
+    'Mittwoch': 'MI.',
+    'Donnerstag': 'DO.',
+    'Freitag': 'FR.',
+    'Samstag': 'SA.',
+    'Sonntag': 'SO.'
+  }
+
+  const dayNamesForDisplay = {
+    'Montag': 'MO.',
+    'Dienstag': 'DI.',
+    'Mittwoch': 'MI.',
+    'Donnerstag': 'DO.',
+    'Freitag': 'FR.',
+    'Samstag': 'SA.',
+    'Sonntag': 'SO.',
+    // Fallback für englische Namen
+    'monday': 'MO.',
+    'tuesday': 'DI.',
+    'wednesday': 'MI.',
+    'thursday': 'DO.',
+    'friday': 'FR.',
+    'saturday': 'SA.',
+    'sunday': 'SO.'
   }
 
   const openAddCapacityModal = () => {
@@ -99,32 +135,139 @@ export default function SettingsDashboard() {
     setShowAddExceptionModal(true)
   }
 
-  const addCapacityRule = () => {
-    // In real app, this would save to Supabase
-    console.log('Adding capacity rule...')
-    setShowAddCapacityModal(false)
-  }
+  const addCapacityRule = async () => {
+    if (!newCapacityRule.days || newCapacityRule.days.length === 0) {
+      alert('Bitte wählen Sie mindestens einen Tag aus.')
+      return
+    }
+    
+    try {
+      const url = '/api/settings'
+      const method = editingRuleId ? 'PUT' : 'POST'
+      const body = editingRuleId ? {
+        type: 'capacity_rule',
+        id: editingRuleId,
+        data: {
+          days: newCapacityRule.days,
+          startTime: newCapacityRule.startTime || '17:30',
+          endTime: newCapacityRule.endTime || '22:00',
+          capacity: newCapacityRule.capacity || 120,
+          interval: newCapacityRule.interval || 30
+        }
+      } : {
+        type: 'capacity_rule',
+        data: {
+          days: newCapacityRule.days,
+          startTime: newCapacityRule.startTime || '17:30',
+          endTime: newCapacityRule.endTime || '22:00',
+          capacity: newCapacityRule.capacity || 120,
+          interval: newCapacityRule.interval || 30
+        }
+      }
 
-  const addException = () => {
-    // In real app, this would save to Supabase
-    console.log('Adding exception...')
-    setShowAddExceptionModal(false)
-  }
-
-  const editCapacityRule = (ruleId: number) => {
-    setEditingRuleId(ruleId)
-    setShowAddCapacityModal(true)
-  }
-
-  const deleteCapacityRule = (ruleId: number) => {
-    if (confirm('Möchten Sie diese Kapazitäts-Regel wirklich löschen?')) {
-      setCapacityRules(prev => prev.filter(rule => rule.id !== ruleId))
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      })
+      
+      if (response.ok) {
+        await loadSettings() // Lade Daten neu
+        setNewCapacityRule({
+          days: [],
+          startTime: '17:30',
+          endTime: '22:00',
+          capacity: 120,
+          interval: 30
+        })
+        setEditingRuleId(null)
+        setShowAddCapacityModal(false)
+      }
+    } catch (error) {
+      console.error('Error adding/updating capacity rule:', error)
     }
   }
 
-  const deleteException = (exceptionId: number) => {
+  const addException = async () => {
+    if (!newException.date) {
+      alert('Bitte wählen Sie ein Datum aus.')
+      return
+    }
+    
+    try {
+      const response = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'exception',
+          data: {
+            date: newException.date
+          }
+        })
+      })
+      
+      if (response.ok) {
+        await loadSettings() // Lade Daten neu von der API
+        setNewException({ date: '' })
+        setShowAddExceptionModal(false)
+      } else {
+        console.error('Fehler beim Hinzufügen der Ausnahme')
+      }
+    } catch (error) {
+      console.error('Error adding exception:', error)
+    }
+  }
+
+  const editCapacityRule = (ruleId: string) => {
+    const rule = capacityRules.find(r => r.id === ruleId)
+    if (rule) {
+      setEditingRuleId(ruleId)
+      // Konvertiere days von JSON-String zu Array für das Formular
+      const parsedDays = typeof rule.days === 'string' ? JSON.parse(rule.days) : rule.days
+      setNewCapacityRule({
+        days: parsedDays,
+        startTime: rule.start_time,
+        endTime: rule.end_time,
+        capacity: rule.capacity,
+        interval: rule.interval_minutes
+      })
+      setShowAddCapacityModal(true)
+    }
+  }
+
+  const deleteCapacityRule = async (ruleId: string) => {
+    if (confirm('Möchten Sie diese Kapazitäts-Regel wirklich löschen?')) {
+      try {
+        const response = await fetch(`/api/settings?type=capacity_rule&id=${ruleId}`, {
+          method: 'DELETE'
+        })
+        
+        if (response.ok) {
+          await loadSettings() // Lade Daten neu von der API
+        } else {
+          console.error('Fehler beim Löschen der Kapazitätsregel')
+        }
+      } catch (error) {
+        console.error('Error deleting capacity rule:', error)
+      }
+    }
+  }
+
+  const deleteException = async (exceptionId: string) => {
     if (confirm('Möchten Sie diese Ausnahme wirklich löschen?')) {
-      setExceptions(prev => prev.filter(exception => exception.id !== exceptionId))
+      try {
+        const response = await fetch(`/api/settings?type=exception&id=${exceptionId}`, {
+          method: 'DELETE'
+        })
+        
+        if (response.ok) {
+          await loadSettings() // Lade Daten neu von der API
+        } else {
+          console.error('Fehler beim Löschen der Ausnahme')
+        }
+      } catch (error) {
+        console.error('Error deleting exception:', error)
+      }
     }
   }
 
@@ -170,16 +313,16 @@ export default function SettingsDashboard() {
                 >
                   <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
                     <div className="font-semibold text-orange-500" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
-                      {rule.days.map(day => dayNames[day as keyof typeof dayNames]).join(', ')}
+                      {(typeof rule.days === 'string' ? JSON.parse(rule.days) : rule.days).map(day => dayNamesForDisplay[day as keyof typeof dayNamesForDisplay]).join(', ')}
                     </div>
                     <div className="text-white text-sm" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
-                      {rule.startTime} - {rule.endTime}
+                      {rule.start_time} - {rule.end_time}
                     </div>
                     <div className="font-semibold text-green-500" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
                       {rule.capacity} Personen
                     </div>
                     <div className="text-gray-300 text-sm" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
-                      Alle {rule.interval}min
+                      Alle {rule.interval_minutes}min
                     </div>
                     <div className="flex gap-2">
                       <button
@@ -278,6 +421,15 @@ export default function SettingsDashboard() {
                           <input
                             type="checkbox"
                             value={key}
+                            checked={Array.isArray(newCapacityRule.days) ? newCapacityRule.days.includes(key) : false}
+                            onChange={(e) => {
+                              const currentDays = Array.isArray(newCapacityRule.days) ? newCapacityRule.days : []
+                              if (e.target.checked) {
+                                setNewCapacityRule({ ...newCapacityRule, days: [...currentDays, key] })
+                              } else {
+                                setNewCapacityRule({ ...newCapacityRule, days: currentDays.filter(d => d !== key) })
+                              }
+                            }}
                             className="mr-2 accent-orange-500"
                           />
                           <span className="text-white text-sm font-medium">{name}</span>
@@ -292,18 +444,20 @@ export default function SettingsDashboard() {
                       <label className="block text-sm text-white mb-2 font-medium">Von</label>
                       <input
                         type="time"
-                        defaultValue="17:30"
-                          className="w-full border border-gray-500 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500 focus:ring-opacity-20 transition-all duration-300"
-                          style={{ backgroundColor: '#242424' }}
+                        value={newCapacityRule.startTime || '17:30'}
+                        onChange={(e) => setNewCapacityRule({ ...newCapacityRule, startTime: e.target.value })}
+                        className="w-full border border-gray-500 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500 focus:ring-opacity-20 transition-all duration-300"
+                        style={{ backgroundColor: '#242424' }}
                       />
                     </div>
                     <div>
                       <label className="block text-sm text-white mb-2 font-medium">Bis</label>
                       <input
                         type="time"
-                        defaultValue="22:00"
-                          className="w-full border border-gray-500 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500 focus:ring-opacity-20 transition-all duration-300"
-                          style={{ backgroundColor: '#242424' }}
+                        value={newCapacityRule.endTime || '22:00'}
+                        onChange={(e) => setNewCapacityRule({ ...newCapacityRule, endTime: e.target.value })}
+                        className="w-full border border-gray-500 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500 focus:ring-opacity-20 transition-all duration-300"
+                        style={{ backgroundColor: '#242424' }}
                       />
                     </div>
                   </div>
@@ -315,18 +469,21 @@ export default function SettingsDashboard() {
                       <input
                         type="number"
                         placeholder="120"
+                        value={newCapacityRule.capacity || 120}
+                        onChange={(e) => setNewCapacityRule({ ...newCapacityRule, capacity: parseInt(e.target.value) || 120 })}
                         min="1"
                         max="1000"
-                          className="w-full border border-gray-500 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500 focus:ring-opacity-20 transition-all duration-300"
-                          style={{ backgroundColor: '#242424' }}
+                        className="w-full border border-gray-500 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500 focus:ring-opacity-20 transition-all duration-300"
+                        style={{ backgroundColor: '#242424' }}
                       />
                     </div>
                     <div>
                       <label className="block text-sm text-white mb-2 font-medium">Intervall (Minuten)</label>
                       <select
-                        defaultValue="30"
-                          className="w-full border border-gray-500 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500 focus:ring-opacity-20 transition-all duration-300"
-                          style={{ backgroundColor: '#242424' }}
+                        value={newCapacityRule.interval || 30}
+                        onChange={(e) => setNewCapacityRule({ ...newCapacityRule, interval: parseInt(e.target.value) || 30 })}
+                        className="w-full border border-gray-500 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500 focus:ring-opacity-20 transition-all duration-300"
+                        style={{ backgroundColor: '#242424' }}
                       >
                         <option value="15">15 Minuten</option>
                         <option value="30">30 Minuten</option>
@@ -379,8 +536,10 @@ export default function SettingsDashboard() {
                     <label className="block text-sm text-white mb-2 font-medium">Datum</label>
                     <input
                       type="date"
-                          className="w-full border border-gray-500 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500 focus:ring-opacity-20 transition-all duration-300"
-                          style={{ backgroundColor: '#242424' }}
+                      value={newException.date || ''}
+                      onChange={(e) => setNewException({ ...newException, date: e.target.value })}
+                      className="w-full border border-gray-500 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500 focus:ring-opacity-20 transition-all duration-300"
+                      style={{ backgroundColor: '#242424' }}
                     />
                   </div>
                 </div>

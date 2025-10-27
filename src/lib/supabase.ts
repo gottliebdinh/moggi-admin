@@ -1,15 +1,17 @@
 import { createClient } from '@supabase/supabase-js'
 
-// Verwende die gleichen Supabase-Credentials wie in der App
-const supabaseUrl = 'https://your-project.supabase.co'
-const supabaseAnonKey = 'your-anon-key'
+// Supabase-Konfiguration aus Umgebungsvariablen
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co'
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key'
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder-service-key'
 
+// Standard Supabase Client (für öffentliche Operationen)
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-// Admin-spezifische Funktionen (mit Service Role Key für Admin-Rechte)
+// Admin Supabase Client (mit Service Role Key für Admin-Rechte)
 export const adminSupabase = createClient(
   supabaseUrl,
-  'your-service-role-key',
+  supabaseServiceKey,
   {
     auth: {
       autoRefreshToken: false,
@@ -17,3 +19,10 @@ export const adminSupabase = createClient(
     }
   }
 )
+
+// Hilfsfunktion um zu prüfen ob Supabase korrekt konfiguriert ist
+export const isSupabaseConfigured = () => {
+  return supabaseUrl !== 'https://placeholder.supabase.co' && 
+         supabaseAnonKey !== 'placeholder-anon-key' &&
+         supabaseServiceKey !== 'placeholder-service-key'
+}

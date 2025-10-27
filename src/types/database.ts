@@ -53,15 +53,18 @@ export interface Room {
 
 export interface Reservation {
   id: string
-  customer_name: string
-  customer_email: string
-  customer_phone: string
-  table_id: string
-  reservation_date: string
-  reservation_time: string
-  party_size: number
-  status: 'pending' | 'confirmed' | 'cancelled' | 'completed'
-  special_requests?: string
+  date: string
+  time: string
+  guest_name: string
+  guests: number
+  phone: string | null
+  email: string | null
+  tables: string | null
+  note: string | null
+  comment: string | null
+  source: string
+  status: string
+  duration: number
+  type: string
   created_at: string
-  updated_at: string
 }
