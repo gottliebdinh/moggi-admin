@@ -20,7 +20,7 @@ export interface Order {
   status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'completed' | 'cancelled'
   payment_intent_id: string
   items: OrderItem[]
-  type?: string
+  source?: string
   note?: string
   created_at: string
   updated_at: string

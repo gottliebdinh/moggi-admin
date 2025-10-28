@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
       payment_intent_id: body.payment_intent_id || null,
       items: Array.isArray(body.items) ? body.items : [],
       note: body.note || null,
-      type: body.type || 'Manuell'
+      source: body.source || 'Manuell'
     }
 
     const { data, error } = await adminSupabase

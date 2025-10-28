@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import AdminLayout from '@/components/AdminLayout'
-import { Calendar, AlertCircle, CheckCircle, X as XCircle, Mail, Send, X } from 'lucide-react'
+import { Calendar, AlertCircle, CheckCircle, X as XCircle, Mail, Send, X, Smartphone, Globe, Edit } from 'lucide-react'
 
 interface Order {
   id: string
@@ -15,7 +15,7 @@ interface Order {
   status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'completed' | 'cancelled'
   payment_intent_id: string
   items: OrderItem[]
-  type?: string
+  source?: string
   note?: string
   created_at: string
   updated_at: string
@@ -88,6 +88,16 @@ export default function OrdersDashboard() {
       'cancelled': { Component: XCircle, text: 'Storniert', color: '#EF4444' }
     }
     return statusMap[status as keyof typeof statusMap] || { Component: AlertCircle, text: 'Unbekannt', color: '#6B7280' }
+  }
+
+  const getSourceInfo = (source: string) => {
+    const sourceMap = {
+      'handy': { Component: Smartphone, text: 'Handy App' },
+      'app': { Component: Smartphone, text: 'App' },
+      'web': { Component: Globe, text: 'Website' },
+      'manual': { Component: Edit, text: 'Manuell' }
+    }
+    return sourceMap[source as keyof typeof sourceMap] || { Component: Edit, text: 'Manuell' }
   }
 
   const getOrderType = (items: OrderItem[] | undefined) => {
@@ -232,7 +242,13 @@ export default function OrdersDashboard() {
                         style={{ backgroundColor: '#242424', borderBottom: '1px solid #333333' }}
                       >
                         <td className="px-6 py-2 text-white font-medium" style={{ fontFamily: 'Georgia', fontWeight: '300', textDecoration: order.status === 'cancelled' ? 'line-through' : 'none' }}>
-                          {order.type || orderType}
+                          <div className="flex items-center justify-center">
+                            {(() => {
+                              const sourceInfo = getSourceInfo(order.source || 'manual')
+                              const SourceIcon = sourceInfo.Component
+                              return <SourceIcon size={20} className="text-gray-400" />
+                            })()}
+                          </div>
                         </td>
                         <td className="px-6 py-2 text-white font-medium" style={{ fontFamily: 'Georgia', fontWeight: '300', textDecoration: order.status === 'cancelled' ? 'line-through' : 'none' }}>
                           {order.pickup_time}
