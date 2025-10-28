@@ -1,57 +1,76 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Order, User } from '@/types/database'
+import React, { useState, useEffect } from 'react'
 import AdminLayout from '@/components/AdminLayout'
+import { Calendar, AlertCircle, CheckCircle, X as XCircle, Mail, Send, X } from 'lucide-react'
 
-interface OrderWithUser extends Order {
-  profiles: User
+interface Order {
+  id: string
+  order_number: string
+  customer_name: string
+  customer_email: string
+  total_amount: number
+  pickup_date: string
+  pickup_time: string
+  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'completed' | 'cancelled'
+  payment_intent_id: string
+  items: OrderItem[]
+  type?: string
+  note?: string
+  created_at: string
+  updated_at: string
+}
+
+interface OrderItem {
+  id: string
+  name: string
+  price: number
+  quantity: number
+  category: string
 }
 
 export default function OrdersDashboard() {
-  const [orders, setOrders] = useState<OrderWithUser[]>([])
-  const [loading, setLoading] = useState(true)
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  const [orders, setOrders] = useState<Order[]>([])
+  const [currentDate, setCurrentDate] = useState(new Date())
+  const [selectedOrderForEmail, setSelectedOrderForEmail] = useState<Order | null>(null)
+  const [showEmailModal, setShowEmailModal] = useState(false)
+  const [emailMessage, setEmailMessage] = useState('')
+  const dateInputRef = React.createRef<HTMLInputElement>()
 
+  // Lade Bestellungen aus der Datenbank
   useEffect(() => {
-    loadOrders()
-  }, [selectedDate])
-
   const loadOrders = async () => {
     try {
-      setLoading(true)
-      const response = await fetch(`/api/orders?date=${selectedDate}`)
+        const dateStr = currentDate.toISOString().split('T')[0]
+        console.log('Loading orders for date:', dateStr)
       
-      if (!response.ok) {
-        throw new Error('Failed to load orders')
-      }
+        const response = await fetch(`/api/orders?date=${dateStr}`)
+        const data = await response.json()
       
-      const data = await response.json()
-      setOrders(data || [])
+        console.log('Orders loaded:', data.length, 'for date:', dateStr)
+        setOrders(data)
     } catch (error) {
-      console.error('Error loading orders:', error)
+        console.error('Fehler beim Laden der Bestellungen:', error)
       setOrders([])
-    } finally {
-      setLoading(false)
+      }
     }
+    
+    loadOrders()
+  }, [currentDate])
+
+  const changeDay = (direction: number) => {
+    const newDate = new Date(currentDate)
+    newDate.setDate(newDate.getDate() + direction)
+    setCurrentDate(newDate)
   }
 
-  const updateOrderStatus = async (orderId: string, status: string) => {
-    try {
-      const response = await fetch('/api/orders', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: orderId, status })
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to update order')
-      }
-      
-      loadOrders() // Reload orders
-    } catch (error) {
-      console.error('Error updating order:', error)
-    }
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('de-DE', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
   }
 
   const formatPrice = (price: number) => {
@@ -61,111 +80,323 @@ export default function OrdersDashboard() {
     }).format(price)
   }
 
-  const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString('de-DE', {
-      hour: '2-digit',
-      minute: '2-digit'
-    })
+  const getStatusInfo = (status: string) => {
+    const statusMap = {
+      'pending': { Component: AlertCircle, text: 'Ausstehend', color: '#F59E0B' },
+      'ready': { Component: CheckCircle, text: 'Fertig', color: '#8B5CF6' },
+      'completed': { Component: CheckCircle, text: 'Abgeholt', color: '#059669' },
+      'cancelled': { Component: XCircle, text: 'Storniert', color: '#EF4444' }
+    }
+    return statusMap[status as keyof typeof statusMap] || { Component: AlertCircle, text: 'Unbekannt', color: '#6B7280' }
   }
+
+  const getOrderType = (items: OrderItem[] | undefined) => {
+    if (!items || items.length === 0) {
+      return 'Unbekannt'
+    }
+    const categories = [...new Set(items.map(item => item.category))]
+    if (categories.length === 1) {
+      return categories[0]
+    }
+    return 'Gemischte Bestellung'
+  }
+
+  const updateOrderStatus = async (orderId: string, newStatus: string) => {
+    try {
+      const response = await fetch('/api/orders', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: orderId, status: newStatus })
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      setOrders(prev => {
+        const updated = prev.map(order => 
+          order.id === orderId ? { ...order, status: newStatus as any } : order
+        )
+        return updated.sort((a, b) => a.pickup_time.localeCompare(b.pickup_time))
+      })
+    } catch (error) {
+      console.error('Error updating order:', error)
+    }
+  }
+
+  const totalOrders = orders.filter(order => order.status !== 'cancelled').length
+  const totalRevenue = orders.filter(order => order.status !== 'cancelled').reduce((sum, order) => sum + order.total_amount, 0)
 
   return (
     <AdminLayout>
-      <div className="space-y-8">
-             {/* Date Filter */}
-             <div className="rounded-2xl p-6" style={{ backgroundColor: '#1A1A1A', borderWidth: '1px', borderColor: '#242424' }}>
-               <div className="flex items-center gap-4">
-                 <label className="text-sm font-medium" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>Datum:</label>
+      <div className="space-y-4">
+        {/* Day Switcher - Compact */}
+        <div className="rounded-2xl p-3" style={{ backgroundColor: '#1A1A1A', borderWidth: '1px', borderColor: '#242424' }}>
+          <div className="flex justify-between items-center flex-wrap gap-4">
+            <div className="flex gap-3 items-center">
+              <button
+                onClick={() => changeDay(-1)}
+                className="text-white px-4 py-3 rounded-xl transition-all duration-300 hover:opacity-80 font-medium"
+                style={{ backgroundColor: '#FF6B00', fontSize: '16px', fontWeight: '300' }}
+              >
+                ← Vorheriger
+              </button>
+              <div className="relative">
+                <div 
+                  className="text-white px-6 py-3 rounded-xl font-semibold text-lg flex items-center gap-3 cursor-pointer relative" 
+                  style={{ backgroundColor: '#FF6B00' }}
+                  onClick={() => {
+                    if (dateInputRef.current) {
+                      ;(dateInputRef.current as HTMLInputElement).showPicker()
+                    }
+                  }}
+                >
+                  <span style={{ fontFamily: 'Georgia', fontWeight: '300' }}>{formatDate(currentDate)}</span>
+                  <Calendar className="w-5 h-5" />
                  <input
+                    ref={dateInputRef}
                    type="date"
-                   value={selectedDate}
-                   onChange={(e) => setSelectedDate(e.target.value)}
-                   className="border border-gray-500 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500 focus:ring-opacity-20 transition-all duration-300"
-                   style={{ backgroundColor: '#242424' }}
-                 />
-                 <button
-                   onClick={loadOrders}
-                   className="px-6 py-3 text-white rounded-xl transition-all duration-300 hover:opacity-80 font-medium"
-                   style={{ backgroundColor: '#FF6B00', fontSize: '16px', fontWeight: '600' }}
-                 >
-                   Aktualisieren
-                 </button>
+                    value={currentDate.toISOString().split('T')[0]}
+                    onChange={(e) => {
+                      const newDate = new Date(e.target.value)
+                      setCurrentDate(newDate)
+                    }}
+                    style={{ 
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      opacity: 0,
+                      cursor: 'pointer'
+                    }}
+                  />
+                </div>
+              </div>
+              <button
+                onClick={() => changeDay(1)}
+                className="text-white px-4 py-3 rounded-xl transition-all duration-300 hover:opacity-80 font-medium"
+                style={{ backgroundColor: '#FF6B00', fontSize: '16px', fontWeight: '300' }}
+              >
+                Nächster →
+              </button>
+            </div>
+
+            <div className="flex gap-8 items-center">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-white" style={{ color: '#FF6B00', fontFamily: 'Georgia', fontWeight: '300' }}>{totalOrders}</div>
+                <div className="text-xs text-gray-300 uppercase tracking-wider font-medium">Bestellungen</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-white" style={{ color: '#FF6B00', fontFamily: 'Georgia', fontWeight: '300' }}>{formatPrice(totalRevenue)}</div>
+                <div className="text-xs text-gray-300 uppercase tracking-wider font-medium">Umsatz</div>
+              </div>
+              {/* Bestellung hinzufügen deaktiviert */}
+            </div>
           </div>
         </div>
 
-        {/* Orders List */}
-        <div className="space-y-4">
-          {loading ? (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto"></div>
-              <p className="mt-2 text-gray-400">Lade Bestellungen...</p>
-            </div>
-          ) : orders.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-400">Keine Bestellungen für diesen Tag</p>
-            </div>
-          ) : (
-                 orders.map((order) => (
-                   <div key={order.id} className="rounded-2xl p-6" style={{ backgroundColor: '#1A1A1A', borderWidth: '1px', borderColor: '#242424' }}>
-                     <div className="flex justify-between items-start mb-4">
-                       <div>
-                         <h3 className="text-xl font-semibold mb-1" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
-                           Bestellung #{order.order_number}
-                         </h3>
-                         <p className="text-gray-400" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
-                           {order.profiles?.first_name} {order.profiles?.last_name}
-                         </p>
-                         <p className="text-sm text-gray-500" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>{order.customer_email}</p>
-                       </div>
-                       <div className="text-right">
-                         <p className="text-2xl font-bold text-orange-500" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
-                           {formatPrice(order.total_amount)}
-                         </p>
-                         <p className="text-sm text-gray-400" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
-                           {formatTime(order.created_at)}
-                         </p>
-                       </div>
-                     </div>
+        {/* Orders Table */}
+        <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: '#1A1A1A', borderWidth: '1px', borderColor: '#242424' }}>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr style={{ backgroundColor: '#242424' }}>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>Typ</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>Zeit</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>Gastname</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>Bestellung</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>Preis</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>Notiz</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>E-Mail</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="px-6 py-8 text-center text-gray-400" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
+                      Keine Bestellungen für diesen Tag
+                    </td>
+                  </tr>
+                ) : (
+                  orders.map((order) => {
+                    const orderType = getOrderType(order.items)
+                    
+                    return (
+                      <tr
+                        key={order.id}
+                        className={`transition-all duration-300 ${
+                          order.status === 'cancelled' ? 'opacity-60' : ''
+                        }`}
+                        style={{ backgroundColor: '#242424', borderBottom: '1px solid #333333' }}
+                      >
+                        <td className="px-6 py-2 text-white font-medium" style={{ fontFamily: 'Georgia', fontWeight: '300', textDecoration: order.status === 'cancelled' ? 'line-through' : 'none' }}>
+                          {order.type || orderType}
+                        </td>
+                        <td className="px-6 py-2 text-white font-medium" style={{ fontFamily: 'Georgia', fontWeight: '300', textDecoration: order.status === 'cancelled' ? 'line-through' : 'none' }}>
+                          {order.pickup_time}
+                        </td>
+                        <td className="px-6 py-2 text-white font-medium" style={{ fontFamily: 'Georgia', fontWeight: '300', textDecoration: order.status === 'cancelled' ? 'line-through' : 'none' }}>
+                          {order.customer_name}
+                        </td>
+                        <td className="px-6 py-2 text-white font-medium" style={{ fontFamily: 'Georgia', fontWeight: '300', textDecoration: order.status === 'cancelled' ? 'line-through' : 'none' }}>
+                          <div className="max-w-xs">
+                            {order.items && order.items.length > 0 ? (
+                              order.items.map((item, index) => (
+                                <div key={index} className="text-sm">
+                                  {item.quantity}x {item.name}
+                                </div>
+                              ))
+                            ) : (
+                              <div className="text-sm text-gray-400">Keine Artikel</div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-2 text-white font-bold" style={{ fontFamily: 'Georgia', fontWeight: '300', color: '#FF6B00', textDecoration: order.status === 'cancelled' ? 'line-through' : 'none' }}>
+                          {formatPrice(order.total_amount)}
+                        </td>
+                        <td className="px-6 py-2 text-white font-medium" style={{ fontFamily: 'Georgia', fontWeight: '300', textDecoration: order.status === 'cancelled' ? 'line-through' : 'none' }}>
+                          {order.note || '—'}
+                        </td>
+                        <td className={`px-6 py-2 ${order.status === 'cancelled' ? 'opacity-60' : ''}`}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              if (order.status !== 'cancelled') {
+                                setSelectedOrderForEmail(order)
+                                setEmailMessage('')
+                                setShowEmailModal(true)
+                              }
+                            }}
+                            className={`text-white w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 hover:opacity-80 ${
+                              order.status === 'cancelled' ? 'opacity-50 cursor-not-allowed' : ''
+                            }`}
+                            style={{ backgroundColor: '#FF6B00' }}
+                            title={order.status === 'cancelled' ? 'Bestellung storniert' : 'E-Mail an Kunden senden'}
+                            disabled={order.status === 'cancelled'}
+                          >
+                            <Mail className="w-5 h-5" />
+                          </button>
+                        </td>
+                        <td className={`px-6 py-2 ${order.status === 'cancelled' ? 'opacity-60' : ''}`}>
+                          <select
+                            value={order.status}
+                            onChange={(e) => {
+                              e.stopPropagation()
+                              updateOrderStatus(order.id, e.target.value)
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                            }}
+                            className={`px-4 py-2 rounded-xl border font-medium transition-all duration-300 ${
+                              order.status === 'pending'
+                                ? 'bg-yellow-100 border-yellow-400 text-yellow-800'
+                                : order.status === 'ready'
+                                ? 'bg-purple-100 border-purple-400 text-purple-800'
+                                : order.status === 'completed'
+                                ? 'bg-green-100 border-green-400 text-green-800'
+                                : 'bg-red-100 border-red-400 text-red-800'
+                            }`}
+                          >
+                            <option value="pending">Ausstehend</option>
+                            <option value="ready">Fertig</option>
+                            <option value="completed">Abgeholt</option>
+                            <option value="cancelled">Storniert</option>
+                          </select>
+                        </td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
 
-                     {/* Order Items */}
-                     <div className="mb-4">
-                       <h4 className="font-medium mb-2" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>Bestellte Artikel:</h4>
-                       <div className="space-y-1">
-                         {order.items?.map((item: any, index: number) => (
-                           <div key={index} className="flex justify-between text-sm">
-                             <span style={{ fontFamily: 'Georgia', fontWeight: '300' }}>{item.quantity}x {item.name}</span>
-                             <span style={{ fontFamily: 'Georgia', fontWeight: '300' }}>{formatPrice(item.price * item.quantity)}</span>
-                           </div>
-                         ))}
-                       </div>
-                     </div>
+        {/* E-Mail Modal */}
+        {showEmailModal && selectedOrderForEmail && (
+          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div className="rounded-2xl max-w-2xl w-full shadow-2xl" style={{ backgroundColor: '#2D2D2D', boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)' }}>
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-2xl font-semibold text-white" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
+                    E-Mail senden
+                  </h3>
+                  <button
+                    onClick={() => setShowEmailModal(false)}
+                    className="text-gray-300 hover:text-orange-500 text-3xl transition-colors duration-300 hover:bg-gray-700 rounded-full w-10 h-10 flex items-center justify-center"
+                    style={{ color: '#FF6B00' }}
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
 
-                     {/* Pickup Info */}
-                     <div className="mb-4 p-3 rounded-xl" style={{ backgroundColor: '#242424' }}>
-                       <p className="text-sm" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
-                         <strong>Abholung:</strong> {new Date(order.pickup_date).toLocaleDateString('de-DE')} um {order.pickup_time}
-                       </p>
-                     </div>
+                {/* Recipient Info */}
+                <div className="rounded-xl p-4 mb-6" style={{ backgroundColor: '#1A1A1A', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)' }}>
+                  <h4 className="text-lg font-semibold text-white mb-3" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
+                    Empfänger
+                  </h4>
+                  <div className="space-y-2">
+                    <div className="text-white" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
+                      <span className="text-gray-400">Name:</span> {selectedOrderForEmail.customer_name}
+                    </div>
+                    <div className="text-white" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
+                      <span className="text-gray-400">E-Mail:</span> {selectedOrderForEmail.customer_email}
+                    </div>
+                    <div className="text-white" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
+                      <span className="text-gray-400">Bestellung:</span> #{selectedOrderForEmail.order_number} - {selectedOrderForEmail.type || 'Bestellung'}
+                    </div>
+                  </div>
+                </div>
 
-                     {/* Status Controls */}
-                     <div className="flex gap-2">
-                       <select
-                         value={order.status}
-                         onChange={(e) => updateOrderStatus(order.id, e.target.value)}
-                         className="border border-gray-500 rounded-xl px-3 py-2 text-white"
-                         style={{ backgroundColor: '#242424' }}
-                       >
-                    <option value="pending">Ausstehend</option>
-                    <option value="confirmed">Bestätigt</option>
-                    <option value="preparing">In Vorbereitung</option>
-                    <option value="ready">Fertig</option>
-                    <option value="completed">Abgeholt</option>
-                    <option value="cancelled">Storniert</option>
-                  </select>
+                {/* Message Input */}
+                <div className="mb-6">
+                  <label className="block text-sm text-white mb-3 font-medium">
+                    Nachricht
+                  </label>
+                  <textarea
+                    value={emailMessage}
+                    onChange={(e) => setEmailMessage(e.target.value)}
+                    placeholder="Schreiben Sie hier Ihre Nachricht..."
+                    className="w-full border-2 border-gray-500 rounded-xl px-4 py-3 text-white h-32 resize-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500 focus:ring-opacity-20 transition-all duration-300"
+                    style={{ backgroundColor: '#242424' }}
+                  />
+                </div>
+
+                {/* Actions */}
+                <div className="flex justify-end gap-4">
+                  <button
+                    onClick={() => setShowEmailModal(false)}
+                    className="px-6 py-3 border border-gray-500 text-white rounded-xl transition-all duration-300 hover:opacity-80 font-medium"
+                    style={{ backgroundColor: '#242424', fontSize: '16px', fontWeight: '300' }}
+                  >
+                    Abbrechen
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (!emailMessage || emailMessage.trim() === '') {
+                        alert('Bitte geben Sie eine Nachricht ein.')
+                        return
+                      }
+                      
+                      const mailtoLink = `mailto:${selectedOrderForEmail.customer_email}?body=${encodeURIComponent(emailMessage)}`
+                      window.open(mailtoLink)
+                      setShowEmailModal(false)
+                      setEmailMessage('')
+                    }}
+                    className="px-6 py-3 text-white rounded-xl transition-all duration-300 hover:opacity-80 font-medium"
+                    style={{ backgroundColor: '#FF6B00', fontSize: '16px', fontWeight: '600' }}
+                  >
+                    E-Mail senden
+                  </button>
                 </div>
               </div>
-            ))
-          )}
-        </div>
+            </div>
+          </div>
+        )}
+
+        {/* Editieren/Hinzufügen deaktiviert – keine Modals */}
       </div>
     </AdminLayout>
   )

@@ -95,7 +95,7 @@ export default function AdminLayout({
       {/* Footer */}
       <footer style={{ backgroundColor: '#2D2D2D', borderTop: '1px solid #242424', marginTop: '64px' }}>
         <div className="container mx-auto px-4 py-6 text-center text-gray-300">
-          <p style={{ fontFamily: 'Georgia', fontWeight: '300' }}>Made with ♥ by Gottlieb Dinh</p>
+          <p style={{ fontFamily: 'Georgia', fontWeight: '300' }}>Made with <span style={{ color: '#FF0000' }}>♥</span> by Gottlieb Dinh</p>
         </div>
       </footer>
     </div>

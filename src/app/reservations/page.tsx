@@ -509,6 +509,7 @@ export default function ReservationsDashboard() {
   const getSourceInfo = (source: string) => {
     const sourceMap = {
       'handy': { Component: Smartphone, text: 'Handy App' },
+      'app': { Component: Smartphone, text: 'App' },
       'web': { Component: Globe, text: 'Website' },
       'manual': { Component: Edit, text: 'Manuell' }
     }
@@ -613,8 +614,8 @@ Ihr Moggi-Team`
     })
   }
 
-  const totalReservations = reservations.length
-  const totalGuests = reservations.reduce((sum, res) => sum + res.guests, 0)
+  const totalReservations = reservations.filter(res => res.status !== 'cancelled').length
+  const totalGuests = reservations.filter(res => res.status !== 'cancelled').reduce((sum, res) => sum + res.guests, 0)
 
   return (
     <AdminLayout>

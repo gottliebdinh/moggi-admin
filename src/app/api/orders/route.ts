@@ -41,6 +41,47 @@ export async function GET(request: NextRequest) {
   }
 }
 
+export async function POST(request: NextRequest) {
+  try {
+    if (!isSupabaseConfigured()) {
+      return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 })
+    }
+
+    const body = await request.json()
+    const now = new Date()
+
+    const payload = {
+      order_number: body.order_number || `MAN-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${now.getTime()}`,
+      customer_name: body.customer_name || 'Unbekannt',
+      customer_email: body.customer_email || '',
+      total_amount: body.total_amount ?? 0,
+      pickup_date: body.pickup_date || new Date().toISOString(),
+      pickup_time: body.pickup_time || '19:00',
+      status: body.status || 'pending',
+      payment_intent_id: body.payment_intent_id || null,
+      items: Array.isArray(body.items) ? body.items : [],
+      note: body.note || null,
+      type: body.type || 'Manuell'
+    }
+
+    const { data, error } = await adminSupabase
+      .from('orders')
+      .insert(payload)
+      .select('*')
+      .single()
+
+    if (error) {
+      console.error('Error creating order:', error)
+      return NextResponse.json({ error: 'Failed to create order' }, { status: 500 })
+    }
+
+    return NextResponse.json(data)
+  } catch (error) {
+    console.error('Error creating order:', error)
+    return NextResponse.json({ error: 'Failed to create order' }, { status: 500 })
+  }
+}
+
 export async function PUT(request: NextRequest) {
   try {
     if (!isSupabaseConfigured()) {
