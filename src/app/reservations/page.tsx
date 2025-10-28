@@ -525,7 +525,7 @@ export default function ReservationsDashboard() {
       const updatedReservation = { 
         ...reservation, 
         status: newStatus,
-        guestName: reservation.guest_name || 'Neue Reservierung',
+        guest_name: reservation.guest_name || 'Neue Reservierung',
         date: reservation.date || new Date().toISOString().split('T')[0],
         time: reservation.time || '19:30',
         guests: reservation.guests || 2,
@@ -924,8 +924,8 @@ Ihr Moggi-Team`
                             defaultValue={selectedReservation.date}
                             onChange={(e) => {
                               const date = e.target.value
-                              const time = (document.querySelector('select') as HTMLSelectElement)?.value || '19:30'
-                              const duration = parseInt((document.querySelector('select[id="duration"]') as HTMLSelectElement)?.value || '120')
+                              const time = (document.querySelector('select[id="edit-time"]') as HTMLSelectElement)?.value || '19:30'
+                              const duration = parseInt((document.querySelector('select[id="edit-duration"]') as HTMLSelectElement)?.value || '120')
                               updateTableAvailability(time, duration, date, selectedReservation?.id)
                             }}
                             className="w-full border border-gray-500 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500 focus:ring-opacity-20 transition-all duration-300"
@@ -955,8 +955,8 @@ Ihr Moggi-Team`
                             defaultValue={selectedReservation.duration || 120}
                             onChange={(e) => {
                               const duration = parseInt(e.target.value)
-                              const time = (document.querySelector('select') as HTMLSelectElement)?.value || '19:30'
-                              const date = (document.querySelector('input[type="date"]') as HTMLInputElement)?.value || currentDate.toISOString().split('T')[0]
+                              const time = (document.querySelector('select[id="edit-time"]') as HTMLSelectElement)?.value || '19:30'
+                              const date = (document.querySelector('input[id="edit-date"]') as HTMLInputElement)?.value || currentDate.toISOString().split('T')[0]
                               updateTableAvailability(time, duration, date, selectedReservation?.id)
                             }}
                             className="w-full border border-gray-500 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500 focus:ring-opacity-20 transition-all duration-300"
@@ -971,32 +971,37 @@ Ihr Moggi-Team`
                           </select>
                         </div>
                         <div>
-                          <label className="block text-sm text-white mb-2 font-medium">Verfügbare Zeit</label>
+                          <label className="block text-sm text-white mb-2 font-medium">Zeit</label>
                           <select
                             id="edit-time"
-                            defaultValue={selectedReservation.time || "19:30"}
+                            defaultValue={selectedReservation.time ? selectedReservation.time.substring(0, 5) : "19:30"}
                             onChange={(e) => {
                               const time = e.target.value
-                              const duration = parseInt((document.querySelector('select[id="duration"]') as HTMLSelectElement)?.value || '120')
-                              const date = (document.querySelector('input[type="date"]') as HTMLInputElement)?.value || currentDate.toISOString().split('T')[0]
+                              const duration = parseInt((document.querySelector('select[id="edit-duration"]') as HTMLSelectElement)?.value || '120')
+                              const date = (document.querySelector('input[id="edit-date"]') as HTMLInputElement)?.value || currentDate.toISOString().split('T')[0]
                               updateTableAvailability(time, duration, date, selectedReservation?.id)
                             }}
                             className="w-full border border-gray-500 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500 focus:ring-opacity-20 transition-all duration-300"
                             style={{ backgroundColor: '#242424' }}
                           >
                             {(() => {
-                              const date = (document.querySelector('input[type="date"]') as HTMLInputElement)?.value || selectedReservation?.date || currentDate.toISOString().split('T')[0]
+                              const date = (document.querySelector('input[id="edit-date"]') as HTMLInputElement)?.value || selectedReservation?.date || currentDate.toISOString().split('T')[0]
                               const availableTimes = getAvailableTimesForDate(date)
+                              const currentTime = selectedReservation?.time ? selectedReservation.time.substring(0, 5) : "19:30"
                               
                               if (settingsLoading) {
                                 return <option value="">Zeiten laden...</option>
                               }
                               
-                              if (availableTimes.length === 0) {
+                              // Erstelle eine Liste mit der aktuellen Zeit und allen verfügbaren Zeiten
+                              const allTimes = new Set([currentTime, ...availableTimes])
+                              const sortedTimes = Array.from(allTimes).sort()
+                              
+                              if (sortedTimes.length === 0) {
                                 return <option value="">Restaurant geschlossen</option>
                               }
                               
-                              return availableTimes.map(time => (
+                              return sortedTimes.map(time => (
                                 <option key={time} value={time}>{time}</option>
                               ))
                             })()}
@@ -1154,7 +1159,7 @@ Ihr Moggi-Team`
                                  const guestName = (document.getElementById('edit-guestName') as HTMLInputElement)?.value || selectedReservation.guest_name
                                  const phone = (document.getElementById('edit-phone') as HTMLInputElement)?.value || selectedReservation.phone
                                  const email = (document.getElementById('edit-email') as HTMLInputElement)?.value || selectedReservation.email
-                                 const date = (document.getElementById('edit-date') as HTMLSelectElement)?.value || selectedReservation.date
+                                 const date = (document.getElementById('edit-date') as HTMLInputElement)?.value || selectedReservation.date
                                  const time = (document.getElementById('edit-time') as HTMLSelectElement)?.value || selectedReservation.time
                                  const guests = parseInt((document.getElementById('edit-guests') as HTMLInputElement)?.value || selectedReservation.guests.toString())
                                  const duration = parseInt((document.getElementById('edit-duration') as HTMLSelectElement)?.value || selectedReservation.duration.toString())
@@ -1163,7 +1168,7 @@ Ihr Moggi-Team`
                                  // Aktualisiere die Reservierung mit den neuen Werten
                                  const updatedReservation = {
                                    ...selectedReservation,
-                                   guestName: guestName ? guestName.trim() : '',
+                                   guest_name: guestName ? guestName.trim() : '',
                                    phone: phone || '',
                                    email: email || '',
                                    date: date,
@@ -1349,7 +1354,7 @@ Ihr Moggi-Team`
                           </select>
                         </div>
                         <div>
-                          <label className="block text-sm text-white mb-2 font-medium">Verfügbare Zeit</label>
+                          <label className="block text-sm text-white mb-2 font-medium">Zeit</label>
                           <select 
                             id="time"
                             onChange={(e) => {
