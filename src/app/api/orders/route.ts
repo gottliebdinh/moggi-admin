@@ -23,9 +23,9 @@ export async function GET(request: NextRequest) {
     const { data, error } = await adminSupabase
       .from('orders')
       .select('*')
-      .gte('created_at', startDate.toISOString())
-      .lte('created_at', endDate.toISOString())
-      .order('created_at', { ascending: false })
+      .gte('pickup_date', startDate.toISOString())
+      .lte('pickup_date', endDate.toISOString())
+      .order('pickup_time', { ascending: true })
 
     console.log('Orders found:', data?.length || 0)
 
