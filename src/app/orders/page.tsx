@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
 import { Order, User } from '@/types/database'
 import AdminLayout from '@/components/AdminLayout'
 
@@ -21,24 +20,17 @@ export default function OrdersDashboard() {
   const loadOrders = async () => {
     try {
       setLoading(true)
-      const { data, error } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          profiles:customer_email (
-            first_name,
-            last_name,
-            phone
-          )
-        `)
-        .gte('created_at', `${selectedDate}T00:00:00`)
-        .lt('created_at', `${selectedDate}T23:59:59`)
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
+      const response = await fetch(`/api/orders?date=${selectedDate}`)
+      
+      if (!response.ok) {
+        throw new Error('Failed to load orders')
+      }
+      
+      const data = await response.json()
       setOrders(data || [])
     } catch (error) {
       console.error('Error loading orders:', error)
+      setOrders([])
     } finally {
       setLoading(false)
     }
@@ -46,12 +38,16 @@ export default function OrdersDashboard() {
 
   const updateOrderStatus = async (orderId: string, status: string) => {
     try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ status })
-        .eq('id', orderId)
+      const response = await fetch('/api/orders', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: orderId, status })
+      })
 
-      if (error) throw error
+      if (!response.ok) {
+        throw new Error('Failed to update order')
+      }
+      
       loadOrders() // Reload orders
     } catch (error) {
       console.error('Error updating order:', error)

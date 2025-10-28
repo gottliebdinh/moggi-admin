@@ -232,13 +232,24 @@ export const reservations = {
     }
     
     try {
+      console.log('Fetching reservations for date:', date)
+      
       const { data, error } = await adminSupabase
         .from('reservations')
         .select('*')
         .eq('date', date)
         .order('time', { ascending: true })
       
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching reservations:', error)
+        throw error
+      }
+      
+      console.log('Reservations found:', data?.length || 0)
+      if (data && data.length > 0) {
+        console.log('Sample reservation dates:', data.slice(0, 3).map(r => r.date))
+      }
+      
       return data || []
     } catch (error) {
       console.error('Error fetching reservations by date:', error)

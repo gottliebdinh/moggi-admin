@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import AdminLayout from '@/components/AdminLayout'
+import { Edit, Trash2, X } from 'lucide-react'
 
 interface Table {
   id: string
@@ -298,7 +299,7 @@ export default function TablesDashboard() {
                       className="text-gray-300 hover:text-orange-500 transition-all duration-300 p-2 rounded-xl hover:bg-gray-600 hover:shadow-lg hover:-translate-y-0.5"
                       title="Bearbeiten"
                     >
-                      ✏️
+                      <Edit className="w-5 h-5" />
                     </button>
                   </div>
                 </div>
@@ -359,7 +360,7 @@ export default function TablesDashboard() {
                     onClick={() => setShowAddRoomModal(false)}
                     className="text-gray-300 hover:text-orange-500 text-3xl transition-colors duration-300 hover:bg-gray-700 rounded-full w-10 h-10 flex items-center justify-center"
                   >
-                    ✕
+                    <X className="w-5 h-5" />
                   </button>
                 </div>
 
@@ -421,7 +422,7 @@ export default function TablesDashboard() {
                     onClick={() => setShowAddTableModal(false)}
                     className="text-gray-300 hover:text-orange-500 text-3xl transition-colors duration-300 hover:bg-gray-700 rounded-full w-10 h-10 flex items-center justify-center"
                   >
-                    ✕
+                    <X className="w-5 h-5" />
                   </button>
                 </div>
 
@@ -485,7 +486,7 @@ export default function TablesDashboard() {
                     onClick={() => setShowEditRoomModal(false)}
                     className="text-gray-300 hover:text-orange-500 text-3xl transition-colors duration-300 hover:bg-gray-700 rounded-full w-10 h-10 flex items-center justify-center"
                   >
-                    ✕
+                    <X className="w-5 h-5" />
                   </button>
                 </div>
 
@@ -560,7 +561,7 @@ export default function TablesDashboard() {
                     onClick={() => setShowEditTableModal(false)}
                     className="text-gray-300 hover:text-orange-500 text-3xl transition-colors duration-300 hover:bg-gray-700 rounded-full w-10 h-10 flex items-center justify-center"
                   >
-                    ✕
+                    <X className="w-5 h-5" />
                   </button>
                 </div>
 

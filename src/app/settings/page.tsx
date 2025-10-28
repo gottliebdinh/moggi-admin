@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import AdminLayout from '@/components/AdminLayout'
+import { Edit, Trash2, Plus, X } from 'lucide-react'
 
 interface CapacityRule {
   id: string
@@ -309,7 +310,7 @@ export default function SettingsDashboard() {
                 <div
                   key={rule.id}
                   className="rounded-2xl p-4 transition-all duration-300 hover:opacity-80"
-                  style={{ backgroundColor: '#242424', borderLeft: '4px solid #4CAF50', borderWidth: '1px', borderColor: '#666666' }}
+                  style={{ backgroundColor: '#242424', borderLeft: '4px solid #666666', borderWidth: '1px', borderColor: '#666666' }}
                 >
                   <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
                     <div className="font-semibold text-orange-500" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
@@ -318,7 +319,7 @@ export default function SettingsDashboard() {
                     <div className="text-white text-sm" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
                       {rule.start_time} - {rule.end_time}
                     </div>
-                    <div className="font-semibold text-green-500" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
+                    <div className="font-semibold text-gray-300" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
                       {rule.capacity} Personen
                     </div>
                     <div className="text-gray-300 text-sm" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
@@ -330,14 +331,14 @@ export default function SettingsDashboard() {
                         className="text-gray-300 hover:text-orange-500 transition-all duration-300 p-2 rounded-xl hover:bg-gray-600 hover:shadow-lg hover:-translate-y-0.5"
                         title="Bearbeiten"
                       >
-                        ✏️
+                        <Edit className="w-5 h-5" />
                       </button>
                       <button
                         onClick={() => deleteCapacityRule(rule.id)}
                         className="text-gray-300 hover:text-red-500 transition-all duration-300 p-2 rounded-xl hover:bg-gray-600 hover:shadow-lg hover:-translate-y-0.5"
                         title="Löschen"
                       >
-                        🗑️
+                        <Trash2 className="w-5 h-5" />
                       </button>
                     </div>
                   </div>
@@ -363,14 +364,14 @@ export default function SettingsDashboard() {
                 <div
                   key={exception.id}
                   className="rounded-2xl p-4 transition-all duration-300 hover:opacity-80"
-                  style={{ backgroundColor: '#242424', borderLeft: '4px solid #EF4444', borderWidth: '1px', borderColor: '#666666' }}
+                  style={{ backgroundColor: '#242424', borderLeft: '4px solid #666666', borderWidth: '1px', borderColor: '#666666' }}
                 >
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-3">
                       <div className="font-semibold text-orange-500" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
                         {formatDate(exception.date)}
                       </div>
-                      <div className="text-red-500 font-medium" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
+                      <div className="text-gray-300 font-medium" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
                         Geschlossen
                       </div>
                     </div>
@@ -380,7 +381,7 @@ export default function SettingsDashboard() {
                         className="text-gray-300 hover:text-red-500 transition-all duration-300 p-2 rounded-xl hover:bg-gray-600 hover:shadow-lg hover:-translate-y-0.5"
                         title="Löschen"
                       >
-                        🗑️
+                        <Trash2 className="w-5 h-5" />
                       </button>
                     </div>
                   </div>
@@ -403,7 +404,7 @@ export default function SettingsDashboard() {
                     onClick={() => setShowAddCapacityModal(false)}
                     className="text-gray-300 hover:text-orange-500 text-3xl transition-colors duration-300 hover:bg-gray-700 rounded-full w-10 h-10 flex items-center justify-center"
                   >
-                    ✕
+                    <X className="w-5 h-5" />
                   </button>
                 </div>
 
@@ -527,7 +528,7 @@ export default function SettingsDashboard() {
                     onClick={() => setShowAddExceptionModal(false)}
                     className="text-gray-300 hover:text-orange-500 text-3xl transition-colors duration-300 hover:bg-gray-700 rounded-full w-10 h-10 flex items-center justify-center"
                   >
-                    ✕
+                    <X className="w-5 h-5" />
                   </button>
                 </div>
 
