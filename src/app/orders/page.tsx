@@ -35,6 +35,7 @@ export default function OrdersDashboard() {
   const [selectedOrderForEmail, setSelectedOrderForEmail] = useState<Order | null>(null)
   const [showEmailModal, setShowEmailModal] = useState(false)
   const [emailMessage, setEmailMessage] = useState('')
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
   const dateInputRef = React.createRef<HTMLInputElement>()
 
   // Lade Bestellungen aus der Datenbank
@@ -390,16 +391,36 @@ export default function OrdersDashboard() {
                     Abbrechen
                   </button>
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       if (!emailMessage || emailMessage.trim() === '') {
                         alert('Bitte geben Sie eine Nachricht ein.')
                         return
                       }
-                      
-                      const mailtoLink = `mailto:${selectedOrderForEmail.customer_email}?body=${encodeURIComponent(emailMessage)}`
-                      window.open(mailtoLink)
-                      setShowEmailModal(false)
-                      setEmailMessage('')
+                      if (!selectedOrderForEmail?.customer_email) {
+                        alert('Keine E-Mail-Adresse vorhanden.')
+                        return
+                      }
+                      try {
+                        const res = await fetch('/api/email/send', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            type: 'order',
+                            to: selectedOrderForEmail.customer_email,
+                            message: emailMessage,
+                          }),
+                        })
+                        if (!res.ok) {
+                          const j = await res.json().catch(() => ({}))
+                          throw new Error(j.error || 'E-Mail-Versand fehlgeschlagen')
+                        }
+                        setShowEmailModal(false)
+                        setEmailMessage('')
+                        setShowSuccessModal(true)
+                      } catch (err) {
+                        console.error(err)
+                        alert('Fehler beim Senden der E-Mail.')
+                      }
                     }}
                     className="px-6 py-3 text-white rounded-xl transition-all duration-300 hover:opacity-80 font-medium"
                     style={{ backgroundColor: '#FF6B00', fontSize: '16px', fontWeight: '600' }}
@@ -407,6 +428,34 @@ export default function OrdersDashboard() {
                     E-Mail senden
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Success Modal */}
+        {showSuccessModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div className="rounded-2xl max-w-md w-full shadow-2xl" style={{ backgroundColor: '#2D2D2D', boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)' }}>
+              <div className="p-8 text-center">
+                <div className="flex justify-center mb-6">
+                  <div className="w-20 h-20 rounded-full flex items-center justify-center" style={{ backgroundColor: '#FF6B00' }}>
+                    <CheckCircle className="w-12 h-12 text-white" />
+                  </div>
+                </div>
+                <h3 className="text-2xl font-semibold text-white mb-3" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
+                  E-Mail gesendet!
+                </h3>
+                <p className="text-gray-300 mb-6" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
+                  Die Nachricht wurde erfolgreich an den Kunden gesendet.
+                </p>
+                <button
+                  onClick={() => setShowSuccessModal(false)}
+                  className="px-8 py-3 text-white rounded-xl transition-all duration-300 hover:opacity-80 font-medium w-full"
+                  style={{ backgroundColor: '#FF6B00', fontSize: '16px', fontWeight: '600' }}
+                >
+                  Schließen
+                </button>
               </div>
             </div>
           </div>

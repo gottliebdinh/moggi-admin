@@ -45,6 +45,7 @@ export default function ReservationsDashboard() {
   const [availableTables, setAvailableTables] = useState<any[]>([])
   const [selectedTables, setSelectedTables] = useState<string[]>([])
   const [guestCount, setGuestCount] = useState<number>(2)
+  const [addModalDuration, setAddModalDuration] = useState<number>(120)
   const dateInputRef = React.createRef<HTMLInputElement>()
   const [allTables, setAllTables] = useState<any[]>([])
   const [guestHistory, setGuestHistory] = useState<{
@@ -62,6 +63,82 @@ export default function ReservationsDashboard() {
   const [emailMessage, setEmailMessage] = useState('')
   const [emailRecipient, setEmailRecipient] = useState<Reservation | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [timeSpan, setTimeSpan] = useState<string>('')
+
+  // Berechne Zeitspanne (von - bis) basierend auf Startzeit und Dauer
+  const calculateTimeSpan = (startTime: string, duration: number): string => {
+    if (!startTime) return ''
+    const [hours, minutes] = startTime.split(':').map(Number)
+    const startMinutes = hours * 60 + minutes
+    const endMinutes = startMinutes + duration
+    const endHours = Math.floor(endMinutes / 60) % 24
+    const endMins = endMinutes % 60
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} - ${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`
+  }
+
+  // Berechne verfügbare Kapazität für einen Zeitraum (Minimum über alle 30-Minuten-Intervalle)
+  const calculateAvailableCapacity = (startTime: string, duration: number, date: string, excludeReservationId?: string, excludeReservationGuests?: number): number => {
+    // Gesamtkapazität aller Tische berechnen
+    const totalCapacity = allTables.reduce((sum, table) => sum + table.capacity, 0)
+    
+    if (totalCapacity === 0) return 0
+    
+    // Zeit in Minuten umwandeln
+    const timeToMinutes = (timeStr: string) => {
+      const [hours, minutes] = timeStr.split(':').map(Number)
+      return hours * 60 + minutes
+    }
+    
+    const minutesToTime = (minutes: number) => {
+      const hours = Math.floor(minutes / 60) % 24
+      const mins = minutes % 60
+      return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`
+    }
+    
+    const startMinutes = timeToMinutes(startTime)
+    const endMinutes = startMinutes + duration
+    
+    // Generiere 30-Minuten-Intervalle
+    const intervals: number[] = []
+    for (let min = startMinutes; min < endMinutes; min += 30) {
+      intervals.push(min)
+    }
+    
+    // Für jedes Intervall berechne die belegte Kapazität
+    const availableCapacities = intervals.map(intervalStart => {
+      const intervalEnd = intervalStart + 30
+      
+      // Finde alle Reservierungen, die dieses Intervall überlappen
+      const overlappingReservations = reservations.filter(reservation => {
+        // Überspringe die aktuelle Reservierung beim Bearbeiten
+        if (reservation.id === excludeReservationId) return false
+        
+        // Nur Reservierungen am gleichen Tag und nicht storniert
+        if (reservation.date !== date || reservation.status === 'cancelled') return false
+        
+        const reservationStart = timeToMinutes(reservation.time)
+        const reservationEnd = reservationStart + (reservation.duration || 120)
+        
+        // Prüfe auf Überlappung
+        return !(intervalEnd <= reservationStart || intervalStart >= reservationEnd)
+      })
+      
+      // Berechne belegte Kapazität (Anzahl Gäste der überlappenden Reservierungen)
+      const occupiedCapacity = overlappingReservations.reduce((sum, reservation) => {
+        return sum + (reservation.guests || 0)
+      }, 0)
+      
+      // Füge die Gäste der aktuell bearbeiteten Reservierung hinzu (sie sind ja auch "belegt")
+      const totalOccupiedCapacity = occupiedCapacity + (excludeReservationGuests || 0)
+      
+      // Verfügbare Kapazität für dieses Intervall
+      return totalCapacity - totalOccupiedCapacity
+    })
+    
+    // Gib das Minimum zurück (der Engpass bestimmt die verfügbare Kapazität)
+    return Math.min(...availableCapacities)
+  }
 
   // Lade Reservierungen aus der Datenbank
   useEffect(() => {
@@ -147,6 +224,15 @@ export default function ReservationsDashboard() {
     
     loadTables()
   }, [])
+
+  // Aktualisiere Zeitspanne wenn Modal geöffnet wird oder sich Zeit/Dauer ändert
+  useEffect(() => {
+    if (showDetailModal && selectedReservation) {
+      const time = selectedReservation.time ? selectedReservation.time.substring(0, 5) : '19:30'
+      const duration = selectedReservation.duration || 120
+      setTimeSpan(calculateTimeSpan(time, duration))
+    }
+  }, [showDetailModal, selectedReservation?.time, selectedReservation?.duration])
 
 
   // Dummy-Tische als Fallback
@@ -685,6 +771,7 @@ Ihr Moggi-Team`
                 onClick={() => {
                   setShowAddModal(true)
                   setSelectedTables([])
+                  setAddModalDuration(120) // Reset duration when opening modal
                   // Initialisiere verfügbare Tische für neue Reservierung mit der nächsten verfügbaren Zeit
                   setTimeout(() => {
                     const date = currentDate.toISOString().split('T')[0]
@@ -958,6 +1045,7 @@ Ihr Moggi-Team`
                               const duration = parseInt(e.target.value)
                               const time = (document.querySelector('select[id="edit-time"]') as HTMLSelectElement)?.value || '19:30'
                               const date = (document.querySelector('input[id="edit-date"]') as HTMLInputElement)?.value || currentDate.toISOString().split('T')[0]
+                              setTimeSpan(calculateTimeSpan(time, duration))
                               updateTableAvailability(time, duration, date, selectedReservation?.id)
                             }}
                             className="w-full border border-gray-500 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500 focus:ring-opacity-20 transition-all duration-300"
@@ -974,21 +1062,24 @@ Ihr Moggi-Team`
                         <div>
                           <label className="block text-sm text-white mb-2 font-medium">Zeit</label>
                           <select
+                            key={`edit-time-${selectedReservation?.guests || 0}-${selectedReservation?.duration || 120}`}
                             id="edit-time"
                             defaultValue={selectedReservation.time ? selectedReservation.time.substring(0, 5) : "19:30"}
                             onChange={(e) => {
                               const time = e.target.value
                               const duration = parseInt((document.querySelector('select[id="edit-duration"]') as HTMLSelectElement)?.value || '120')
                               const date = (document.querySelector('input[id="edit-date"]') as HTMLInputElement)?.value || currentDate.toISOString().split('T')[0]
+                              setTimeSpan(calculateTimeSpan(time, duration))
                               updateTableAvailability(time, duration, date, selectedReservation?.id)
                             }}
                             className="w-full border border-gray-500 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500 focus:ring-opacity-20 transition-all duration-300"
                             style={{ backgroundColor: '#242424' }}
                           >
                             {(() => {
-                              const date = (document.querySelector('input[id="edit-date"]') as HTMLInputElement)?.value || selectedReservation?.date || currentDate.toISOString().split('T')[0]
-                              const availableTimes = getAvailableTimesForDate(date)
+                              const editDate = (document.querySelector('input[id="edit-date"]') as HTMLInputElement)?.value || selectedReservation?.date || currentDate.toISOString().split('T')[0]
+                              const availableTimes = getAvailableTimesForDate(editDate)
                               const currentTime = selectedReservation?.time ? selectedReservation.time.substring(0, 5) : "19:30"
+                              const duration = parseInt((document.querySelector('select[id="edit-duration"]') as HTMLSelectElement)?.value || '120')
                               
                               if (settingsLoading) {
                                 return <option value="">Zeiten laden...</option>
@@ -1002,9 +1093,14 @@ Ihr Moggi-Team`
                                 return <option value="">Restaurant geschlossen</option>
                               }
                               
-                              return sortedTimes.map(time => (
-                                <option key={time} value={time}>{time}</option>
-                              ))
+                              return sortedTimes.map(time => {
+                                // Gleiche Logik wie bei neuen Reservierungen - behandle die Reservierung normal (ohne Ausschluss)
+                                const capacity = calculateAvailableCapacity(time, duration, editDate)
+                                const timeSpanStr = calculateTimeSpan(time, duration)
+                                return (
+                                  <option key={time} value={time}>{timeSpanStr} ({capacity} Kapazität)</option>
+                                )
+                              })
                             })()}
                           </select>
                         </div>
@@ -1106,7 +1202,7 @@ Ihr Moggi-Team`
                       )
                     }
                   })()}
-                  <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+                  <div className="grid grid-cols-5 md:grid-cols-7 lg:grid-cols-10 gap-2">
                     {/* Nur verfügbare Tische aus dem Tischplan */}
                     {availableTables
                       .filter(table => table.available || selectedTables.includes(table.name))
@@ -1116,7 +1212,7 @@ Ihr Moggi-Team`
                         return (
                           <div
                             key={table.id}
-                            className={`border-2 rounded-lg p-3 text-center transition-all duration-300 ${
+                            className={`border-2 rounded-lg p-2 text-center transition-all duration-300 ${
                               isSelected
                                 ? 'text-white shadow-lg cursor-pointer'
                                 : 'cursor-pointer hover:shadow-lg hover:-translate-y-1 text-white hover:border-orange-500 hover:bg-orange-600'
@@ -1133,8 +1229,8 @@ Ihr Moggi-Team`
                               }
                             }}
                           >
-                            <div className="font-semibold text-sm mb-2">{table.name}</div>
-                            <div className="w-8 h-8 text-white rounded-full flex items-center justify-center text-sm mx-auto font-bold" style={{ backgroundColor: '#FF6B00' }}>
+                            <div className="font-semibold text-xs mb-1">{table.name}</div>
+                            <div className="w-6 h-6 text-white rounded-full flex items-center justify-center text-xs mx-auto font-bold" style={{ backgroundColor: '#FF6B00' }}>
                               {table.capacity}
                             </div>
                           </div>
@@ -1292,7 +1388,7 @@ Ihr Moggi-Team`
                             onChange={(e) => {
                               const date = e.target.value
                               setSelectedDate(date)
-                              const duration = parseInt((document.querySelector('select[id="duration"]') as HTMLSelectElement)?.value || '120')
+                              const duration = addModalDuration
                               const availableTimes = getAvailableTimesForDate(date)
                               const defaultTime = pickDefaultTimeForDate(date, availableTimes)
                               
@@ -1326,10 +1422,11 @@ Ihr Moggi-Team`
                         <div>
                           <label className="block text-sm text-white mb-2 font-medium">Aufenthaltsdauer</label>
                           <select 
-                            defaultValue="120"
+                            value={addModalDuration}
                             id="duration"
                             onChange={(e) => {
                               const duration = parseInt(e.target.value)
+                              setAddModalDuration(duration)
                               const availableTimes = getAvailableTimesForDate(selectedDate)
                               const defaultTime = pickDefaultTimeForDate(selectedDate, availableTimes)
                               
@@ -1357,10 +1454,11 @@ Ihr Moggi-Team`
                         <div>
                           <label className="block text-sm text-white mb-2 font-medium">Zeit</label>
                           <select 
+                            key={`time-${addModalDuration}-${selectedDate}`}
                             id="time"
                             onChange={(e) => {
                               const time = e.target.value
-                              const duration = parseInt((document.querySelector('select[id="duration"]') as HTMLSelectElement)?.value || '120')
+                              const duration = addModalDuration
                               const date = (document.querySelector('input[type="date"]') as HTMLInputElement)?.value || currentDate.toISOString().split('T')[0]
                               updateTableAvailability(time, duration, date)
                             }}
@@ -1378,9 +1476,14 @@ Ihr Moggi-Team`
                                 return <option value="">Restaurant geschlossen</option>
                               }
                               
-                              return availableTimes.map(time => (
-                                <option key={time} value={time}>{time}</option>
-                              ))
+                              const addDate = (document.querySelector('input[type="date"]') as HTMLInputElement)?.value || selectedDate || currentDate.toISOString().split('T')[0]
+                              return availableTimes.map(time => {
+                                const capacity = calculateAvailableCapacity(time, addModalDuration, addDate)
+                                const timeSpanStr = calculateTimeSpan(time, addModalDuration)
+                                return (
+                                  <option key={time} value={time}>{timeSpanStr} ({capacity} Kapazität)</option>
+                                )
+                              })
                             })()}
                           </select>
                         </div>
@@ -1442,7 +1545,7 @@ Ihr Moggi-Team`
                       )
                     }
                   })()}
-                  <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+                  <div className="grid grid-cols-5 md:grid-cols-7 lg:grid-cols-10 gap-2">
                     {/* Nur verfügbare Tische aus dem Tischplan */}
                     {availableTables
                       .filter(table => table.available || selectedTables.includes(table.name))
@@ -1452,7 +1555,7 @@ Ihr Moggi-Team`
                         return (
                           <div
                             key={table.id}
-                            className={`border-2 rounded-lg p-3 text-center transition-all duration-300 ${
+                            className={`border-2 rounded-lg p-2 text-center transition-all duration-300 ${
                               isSelected
                                 ? 'text-white shadow-lg cursor-pointer'
                                 : 'cursor-pointer hover:shadow-lg hover:-translate-y-1 text-white hover:border-orange-500 hover:bg-orange-600'
@@ -1469,8 +1572,8 @@ Ihr Moggi-Team`
                               }
                             }}
                           >
-                            <div className="font-semibold text-sm mb-2">{table.name}</div>
-                            <div className="w-8 h-8 text-white rounded-full flex items-center justify-center text-sm mx-auto font-bold" style={{ backgroundColor: '#FF6B00' }}>
+                            <div className="font-semibold text-xs mb-1">{table.name}</div>
+                            <div className="w-6 h-6 text-white rounded-full flex items-center justify-center text-xs mx-auto font-bold" style={{ backgroundColor: '#FF6B00' }}>
                               {table.capacity}
                             </div>
                           </div>
@@ -1642,17 +1745,28 @@ Ihr Moggi-Team`
                         alert('Bitte geben Sie eine Nachricht ein.')
                         return
                       }
-                      
+                      if (!emailRecipient?.email) {
+                        alert('Keine E-Mail-Adresse vorhanden.')
+                        return
+                      }
                       try {
-                        // TODO: API Call zum Versenden der E-Mail
-                        console.log('Sending email to:', emailRecipient.email)
-                        console.log('Message:', emailMessage)
-                        
-                        // Simuliere erfolgreichen Versand
-                        alert('E-Mail wurde erfolgreich gesendet!')
+                        const res = await fetch('/api/email/send', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            type: 'reservation',
+                            to: emailRecipient.email,
+                            message: emailMessage,
+                          }),
+                        })
+                        if (!res.ok) {
+                          const j = await res.json().catch(() => ({}))
+                          throw new Error(j.error || 'E-Mail-Versand fehlgeschlagen')
+                        }
                         setShowEmailModal(false)
                         setEmailMessage('')
                         setEmailRecipient(null)
+                        setShowSuccessModal(true)
                       } catch (error) {
                         console.error('Error sending email:', error)
                         alert('Fehler beim Senden der E-Mail.')
@@ -1664,6 +1778,34 @@ Ihr Moggi-Team`
                     E-Mail senden
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Success Modal */}
+        {showSuccessModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div className="rounded-2xl max-w-md w-full shadow-2xl" style={{ backgroundColor: '#2D2D2D', boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)' }}>
+              <div className="p-8 text-center">
+                <div className="flex justify-center mb-6">
+                  <div className="w-20 h-20 rounded-full flex items-center justify-center" style={{ backgroundColor: '#FF6B00' }}>
+                    <CheckCircle className="w-12 h-12 text-white" />
+                  </div>
+                </div>
+                <h3 className="text-2xl font-semibold text-white mb-3" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
+                  E-Mail gesendet!
+                </h3>
+                <p className="text-gray-300 mb-6" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
+                  Die Nachricht wurde erfolgreich an den Kunden gesendet.
+                </p>
+                <button
+                  onClick={() => setShowSuccessModal(false)}
+                  className="px-8 py-3 text-white rounded-xl transition-all duration-300 hover:opacity-80 font-medium w-full"
+                  style={{ backgroundColor: '#FF6B00', fontSize: '16px', fontWeight: '600' }}
+                >
+                  Schließen
+                </button>
               </div>
             </div>
           </div>
