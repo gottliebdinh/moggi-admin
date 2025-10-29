@@ -52,6 +52,13 @@ const dummyExceptions: Exception[] = [
   { id: 3, date: '2024-01-01' }
 ]
 
+// Hilfsfunktion: Formatiere Zeit von HH:MM:SS auf HH:MM
+const formatTimeHHMM = (timeStr: string): string => {
+  if (!timeStr) return ''
+  // Wenn Zeit im Format HH:MM:SS ist, nimm nur die ersten 5 Zeichen (HH:MM)
+  return timeStr.substring(0, 5)
+}
+
 export default function SettingsDashboard() {
   const [capacityRules, setCapacityRules] = useState<CapacityRule[]>([])
   const [exceptions, setExceptions] = useState<Exception[]>([])
@@ -227,8 +234,8 @@ export default function SettingsDashboard() {
       const parsedDays = typeof rule.days === 'string' ? JSON.parse(rule.days) : rule.days
       setNewCapacityRule({
         days: parsedDays,
-        startTime: rule.start_time,
-        endTime: rule.end_time,
+        startTime: formatTimeHHMM(rule.start_time),
+        endTime: formatTimeHHMM(rule.end_time),
         capacity: rule.capacity,
         interval: rule.interval_minutes
       })
@@ -317,7 +324,7 @@ export default function SettingsDashboard() {
                       {(typeof rule.days === 'string' ? JSON.parse(rule.days) : rule.days).map(day => dayNamesForDisplay[day as keyof typeof dayNamesForDisplay]).join(', ')}
                     </div>
                     <div className="text-white text-sm" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
-                      {rule.start_time} - {rule.end_time}
+                      {formatTimeHHMM(rule.start_time)} - {formatTimeHHMM(rule.end_time)}
                     </div>
                     <div className="font-semibold text-gray-300" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
                       {rule.capacity} Personen

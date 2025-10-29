@@ -65,6 +65,8 @@ export default function ReservationsDashboard() {
   const [isSaving, setIsSaving] = useState(false)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [timeSpan, setTimeSpan] = useState<string>('')
+  const [editModalCapacity, setEditModalCapacity] = useState<number>(0)
+  const [addModalCapacity, setAddModalCapacity] = useState<number>(0)
 
   // Berechne Zeitspanne (von - bis) basierend auf Startzeit und Dauer
   const calculateTimeSpan = (startTime: string, duration: number): string => {
@@ -225,14 +227,17 @@ export default function ReservationsDashboard() {
     loadTables()
   }, [])
 
-  // Aktualisiere Zeitspanne wenn Modal geöffnet wird oder sich Zeit/Dauer ändert
+  // Aktualisiere Zeitspanne und Kapazität wenn Modal geöffnet wird oder sich Zeit/Dauer ändert
   useEffect(() => {
     if (showDetailModal && selectedReservation) {
       const time = selectedReservation.time ? selectedReservation.time.substring(0, 5) : '19:30'
       const duration = selectedReservation.duration || 120
+      const date = selectedReservation.date || currentDate.toISOString().split('T')[0]
       setTimeSpan(calculateTimeSpan(time, duration))
+      const capacity = calculateAvailableCapacity(time, duration, date)
+      setEditModalCapacity(capacity)
     }
-  }, [showDetailModal, selectedReservation?.time, selectedReservation?.duration])
+  }, [showDetailModal, selectedReservation?.time, selectedReservation?.duration, selectedReservation?.date])
 
 
   // Dummy-Tische als Fallback
@@ -381,9 +386,10 @@ export default function ReservationsDashboard() {
   }
 
   // Funktion um alle verfügbaren Zeiten für ein bestimmtes Datum zu generieren (nur DB-Regeln)
-  const getAvailableTimesForDate = (date: string) => {
+  const getAvailableTimesForDate = (date: string, duration?: number) => {
     console.log('=== getAvailableTimesForDate Debug ===')
     console.log('Date:', date)
+    console.log('Duration:', duration)
     console.log('Capacity rules loaded:', capacityRules.length)
     console.log('Exceptions loaded:', exceptions.length)
     
@@ -431,9 +437,26 @@ export default function ReservationsDashboard() {
     applicableRules.forEach(rule => {
       console.log('Processing rule:', rule.id, 'Start:', rule.start_time, 'End:', rule.end_time, 'Interval:', rule.interval_minutes)
       const startMinutes = timeToMinutes(rule.start_time)
-      const endMinutes = timeToMinutes(rule.end_time)
+      let endMinutes = timeToMinutes(rule.end_time)
+      
+      // Wenn eine Aufenthaltsdauer gegeben ist, erlaube Startzeiten bis zur Endzeit minus Dauer
+      // Damit kann eine Reservierung bis zur Endzeit gehen (z.B. 22:00 bei 1h Dauer = Start um 22:00, Ende 23:00)
+      if (duration) {
+        endMinutes = endMinutes // Endzeit bleibt gleich, aber wir erlauben Startzeiten bis zur Endzeit
+      }
+      
       const interval = rule.interval_minutes
-      for (let minutes = startMinutes; minutes < endMinutes; minutes += interval) {
+      // Erlaube Startzeiten bis zur Endzeit
+      // Wenn eine Dauer gegeben ist, prüfe ob die Reservierung über die Regel hinausgeht
+      let maxStartMinutes = endMinutes
+      
+      if (duration) {
+        // Erlaube Startzeiten bis zur Endzeit (die letzte Reservierung kann etwas über die Regel hinausgehen)
+        // z.B. Regel bis 22:00, Dauer 1h: Start um 22:00 geht bis 23:00 (ok)
+        maxStartMinutes = endMinutes
+      }
+      
+      for (let minutes = startMinutes; minutes <= maxStartMinutes; minutes += interval) {
         availableTimes.push(minutesToTime(minutes))
       }
     })
@@ -777,7 +800,7 @@ Ihr Moggi-Team`
                     const date = currentDate.toISOString().split('T')[0]
                     setSelectedDate(date)
                     const duration = 120 // Standardwert aus dem Modal
-                    const availableTimes = getAvailableTimesForDate(date)
+                    const availableTimes = getAvailableTimesForDate(date, duration)
                     const defaultTime = pickDefaultTimeForDate(date, availableTimes)
                     
                     // Setze die Standardzeit im Select-Element
@@ -788,6 +811,8 @@ Ihr Moggi-Team`
                     
                     if (defaultTime) {
                       updateTableAvailability(defaultTime, duration, date)
+                      const capacity = calculateAvailableCapacity(defaultTime, duration, date)
+                      setAddModalCapacity(capacity)
                     }
                   }, 100) // Kurze Verzögerung damit das Modal gerendert ist
                 }}
@@ -842,6 +867,9 @@ Ihr Moggi-Team`
                         const duration = reservation.duration || 120
                         const date = reservation.date || currentDate.toISOString().split('T')[0]
                         updateTableAvailability(time, duration, date, reservation.id)
+                        // Initialisiere Kapazität
+                        const capacity = calculateAvailableCapacity(time, duration, date)
+                        setEditModalCapacity(capacity)
                       }}
                     >
                       <td className={`px-6 py-2 ${reservation.status === 'cancelled' ? 'opacity-60' : ''}`}>
@@ -1015,6 +1043,8 @@ Ihr Moggi-Team`
                               const time = (document.querySelector('select[id="edit-time"]') as HTMLSelectElement)?.value || '19:30'
                               const duration = parseInt((document.querySelector('select[id="edit-duration"]') as HTMLSelectElement)?.value || '120')
                               updateTableAvailability(time, duration, date, selectedReservation?.id)
+                              const capacity = calculateAvailableCapacity(time, duration, date)
+                              setEditModalCapacity(capacity)
                             }}
                             className="w-full border border-gray-500 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500 focus:ring-opacity-20 transition-all duration-300"
                             style={{ backgroundColor: '#242424' }}
@@ -1047,6 +1077,8 @@ Ihr Moggi-Team`
                               const date = (document.querySelector('input[id="edit-date"]') as HTMLInputElement)?.value || currentDate.toISOString().split('T')[0]
                               setTimeSpan(calculateTimeSpan(time, duration))
                               updateTableAvailability(time, duration, date, selectedReservation?.id)
+                              const capacity = calculateAvailableCapacity(time, duration, date)
+                              setEditModalCapacity(capacity)
                             }}
                             className="w-full border border-gray-500 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500 focus:ring-opacity-20 transition-all duration-300"
                             style={{ backgroundColor: '#242424' }}
@@ -1071,15 +1103,17 @@ Ihr Moggi-Team`
                               const date = (document.querySelector('input[id="edit-date"]') as HTMLInputElement)?.value || currentDate.toISOString().split('T')[0]
                               setTimeSpan(calculateTimeSpan(time, duration))
                               updateTableAvailability(time, duration, date, selectedReservation?.id)
+                              const capacity = calculateAvailableCapacity(time, duration, date)
+                              setEditModalCapacity(capacity)
                             }}
                             className="w-full border border-gray-500 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500 focus:ring-opacity-20 transition-all duration-300"
                             style={{ backgroundColor: '#242424' }}
                           >
                             {(() => {
                               const editDate = (document.querySelector('input[id="edit-date"]') as HTMLInputElement)?.value || selectedReservation?.date || currentDate.toISOString().split('T')[0]
-                              const availableTimes = getAvailableTimesForDate(editDate)
-                              const currentTime = selectedReservation?.time ? selectedReservation.time.substring(0, 5) : "19:30"
                               const duration = parseInt((document.querySelector('select[id="edit-duration"]') as HTMLSelectElement)?.value || '120')
+                              const availableTimes = getAvailableTimesForDate(editDate, duration)
+                              const currentTime = selectedReservation?.time ? selectedReservation.time.substring(0, 5) : "19:30"
                               
                               if (settingsLoading) {
                                 return <option value="">Zeiten laden...</option>
@@ -1239,6 +1273,13 @@ Ihr Moggi-Team`
                   </div>
                 </div>
 
+                       {/* Kapazitäts-Warnung */}
+                       {editModalCapacity === 0 && (
+                         <div className="mt-4 bg-red-100 border-2 border-red-400 rounded-xl p-3 text-red-800 text-sm font-medium">
+                           <AlertCircle className="w-4 h-4 inline mr-1" /> Keine Kapazität verfügbar! Reservierung kann nicht gespeichert werden.
+                         </div>
+                       )}
+
                        {/* Actions - Mobile App Style */}
                        <div className="flex justify-end gap-4 mt-4 pt-4" style={{ borderTop: '1px solid #242424' }}>
                          <button
@@ -1309,7 +1350,10 @@ Ihr Moggi-Team`
                                }
                              }
                            }}
-                           className="px-6 py-3 text-white rounded-xl transition-all duration-300 hover:opacity-80 font-medium"
+                           disabled={editModalCapacity === 0 || isSaving}
+                           className={`px-6 py-3 text-white rounded-xl transition-all duration-300 font-medium ${
+                             editModalCapacity === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-80'
+                           }`}
                            style={{ backgroundColor: '#FF6B00', fontSize: '16px', fontWeight: '600' }}
                          >
                            Speichern
@@ -1389,7 +1433,7 @@ Ihr Moggi-Team`
                               const date = e.target.value
                               setSelectedDate(date)
                               const duration = addModalDuration
-                              const availableTimes = getAvailableTimesForDate(date)
+                              const availableTimes = getAvailableTimesForDate(date, duration)
                               const defaultTime = pickDefaultTimeForDate(date, availableTimes)
                               
                               // Setze die Standardzeit im Select-Element
@@ -1400,6 +1444,8 @@ Ihr Moggi-Team`
                               
                               if (defaultTime) {
                                 updateTableAvailability(defaultTime, duration, date)
+                                const capacity = calculateAvailableCapacity(defaultTime, duration, date)
+                                setAddModalCapacity(capacity)
                               }
                             }}
                             className="w-full border border-gray-500 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500 focus:ring-opacity-20 transition-all duration-300"
@@ -1427,7 +1473,7 @@ Ihr Moggi-Team`
                             onChange={(e) => {
                               const duration = parseInt(e.target.value)
                               setAddModalDuration(duration)
-                              const availableTimes = getAvailableTimesForDate(selectedDate)
+                              const availableTimes = getAvailableTimesForDate(selectedDate, duration)
                               const defaultTime = pickDefaultTimeForDate(selectedDate, availableTimes)
                               
                               // Setze die Standardzeit im Select-Element
@@ -1438,6 +1484,8 @@ Ihr Moggi-Team`
                               
                               if (defaultTime) {
                                 updateTableAvailability(defaultTime, duration, selectedDate)
+                                const capacity = calculateAvailableCapacity(defaultTime, duration, selectedDate)
+                                setAddModalCapacity(capacity)
                               }
                             }}
                             className="w-full border border-gray-500 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500 focus:ring-opacity-20 transition-all duration-300"
@@ -1466,7 +1514,7 @@ Ihr Moggi-Team`
                             style={{ backgroundColor: '#242424' }}
                           >
                             {(() => {
-                              const availableTimes = getAvailableTimesForDate(selectedDate)
+                              const availableTimes = getAvailableTimesForDate(selectedDate, addModalDuration)
                               
                               if (settingsLoading) {
                                 return <option value="">Zeiten laden...</option>
@@ -1477,6 +1525,16 @@ Ihr Moggi-Team`
                               }
                               
                               const addDate = (document.querySelector('input[type="date"]') as HTMLInputElement)?.value || selectedDate || currentDate.toISOString().split('T')[0]
+                              // Initialisiere Kapazität mit der aktuellen Zeit
+                              const currentTimeSelect = document.querySelector('select[id="time"]') as HTMLSelectElement
+                              const currentTime = currentTimeSelect?.value || availableTimes[0] || ''
+                              if (currentTime) {
+                                const capacity = calculateAvailableCapacity(currentTime, addModalDuration, addDate)
+                                if (capacity !== addModalCapacity) {
+                                  // Aktualisiere Kapazität asynchron (setAddModalCapacity würde während Render aufgerufen)
+                                  setTimeout(() => setAddModalCapacity(capacity), 0)
+                                }
+                              }
                               return availableTimes.map(time => {
                                 const capacity = calculateAvailableCapacity(time, addModalDuration, addDate)
                                 const timeSpanStr = calculateTimeSpan(time, addModalDuration)
@@ -1582,6 +1640,13 @@ Ihr Moggi-Team`
                   </div>
                 </div>
 
+                {/* Kapazitäts-Warnung */}
+                {addModalCapacity === 0 && (
+                  <div className="mt-4 bg-red-100 border-2 border-red-400 rounded-xl p-3 text-red-800 text-sm font-medium">
+                    <AlertCircle className="w-4 h-4 inline mr-1" /> Keine Kapazität verfügbar! Reservierung kann nicht hinzugefügt werden.
+                  </div>
+                )}
+
                 {/* Actions - Mobile App Style */}
                 <div className="flex justify-end gap-4 mt-8 pt-6" style={{ borderTop: '1px solid #242424' }}>
                   <button
@@ -1606,6 +1671,12 @@ Ihr Moggi-Team`
                       // Validiere Gastname
                       if (!guestName || (guestName && guestName.trim() === '')) {
                         alert('Bitte geben Sie einen Gastnamen ein.')
+                        return
+                      }
+
+                      // Prüfe Kapazität
+                      if (addModalCapacity === 0) {
+                        alert('Keine Kapazität verfügbar für den gewählten Zeitraum.')
                         return
                       }
 
@@ -1668,8 +1739,10 @@ Ihr Moggi-Team`
                         setIsSaving(false)
                       }
                     }}
-                    disabled={isSaving}
-                    className="px-6 py-3 text-white rounded-lg transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={addModalCapacity === 0 || isSaving}
+                    className={`px-6 py-3 text-white rounded-lg transition-all duration-300 font-medium disabled:opacity-50 disabled:cursor-not-allowed ${
+                      addModalCapacity === 0 ? '' : 'hover:shadow-lg hover:-translate-y-0.5'
+                    }`}
                     style={{ backgroundColor: '#FF6B00' }}
                   >
                     {isSaving ? 'Wird gespeichert...' : 'Hinzufügen'}
