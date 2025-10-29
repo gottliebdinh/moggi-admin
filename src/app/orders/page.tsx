@@ -211,16 +211,16 @@ export default function OrdersDashboard() {
         <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: '#1A1A1A', borderWidth: '1px', borderColor: '#242424' }}>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead>
-                <tr style={{ backgroundColor: '#242424' }}>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>Typ</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>Zeit</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>Gastname</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>Bestellung</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>Preis</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>Notiz</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>E-Mail</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>Status</th>
+              <thead style={{ backgroundColor: '#1A1A1A' }}>
+                <tr>
+                  <th className="px-6 py-5 text-left text-sm font-semibold text-white uppercase tracking-wider" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>Typ</th>
+                  <th className="px-6 py-5 text-left text-sm font-semibold text-white uppercase tracking-wider" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>Zeit</th>
+                  <th className="px-6 py-5 text-left text-sm font-semibold text-white uppercase tracking-wider" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>Gastname</th>
+                  <th className="px-6 py-5 text-left text-sm font-semibold text-white uppercase tracking-wider" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>Bestellung</th>
+                  <th className="px-6 py-5 text-left text-sm font-semibold text-white uppercase tracking-wider" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>Preis</th>
+                  <th className="px-6 py-5 text-left text-sm font-semibold text-white uppercase tracking-wider" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>Notiz</th>
+                  <th className="px-6 py-5 text-left text-sm font-semibold text-white uppercase tracking-wider" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>E-Mail</th>
+                  <th className="px-6 py-5 text-left text-sm font-semibold text-white uppercase tracking-wider" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -242,22 +242,22 @@ export default function OrdersDashboard() {
                         }`}
                         style={{ backgroundColor: '#242424', borderBottom: '1px solid #333333' }}
                       >
-                        <td className="px-6 py-2 text-white font-medium" style={{ fontFamily: 'Georgia', fontWeight: '300', textDecoration: order.status === 'cancelled' ? 'line-through' : 'none' }}>
-                          <div className="flex items-center justify-center">
+                        <td className={`px-6 py-2 ${order.status === 'cancelled' ? 'opacity-60' : ''}`}>
+                          <div className="flex items-center justify-center" title={getSourceInfo(order.source || 'manual').text}>
                             {(() => {
                               const sourceInfo = getSourceInfo(order.source || 'manual')
                               const SourceIcon = sourceInfo.Component
-                              return <SourceIcon size={20} className="text-gray-400" />
+                              return <SourceIcon className={`w-6 h-6 ${order.status === 'cancelled' ? 'line-through' : ''}`} />
                             })()}
                           </div>
                         </td>
-                        <td className="px-6 py-2 text-white font-medium" style={{ fontFamily: 'Georgia', fontWeight: '300', textDecoration: order.status === 'cancelled' ? 'line-through' : 'none' }}>
+                        <td className={`px-6 py-2 text-white font-medium ${order.status === 'cancelled' ? 'line-through opacity-60' : ''}`} style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
                           {order.pickup_time}
                         </td>
-                        <td className="px-6 py-2 text-white font-medium" style={{ fontFamily: 'Georgia', fontWeight: '300', textDecoration: order.status === 'cancelled' ? 'line-through' : 'none' }}>
+                        <td className={`px-6 py-2 text-white font-medium ${order.status === 'cancelled' ? 'line-through opacity-60' : ''}`} style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
                           {order.customer_name}
                         </td>
-                        <td className="px-6 py-2 text-white font-medium" style={{ fontFamily: 'Georgia', fontWeight: '300', textDecoration: order.status === 'cancelled' ? 'line-through' : 'none' }}>
+                        <td className={`px-6 py-2 text-white font-medium ${order.status === 'cancelled' ? 'line-through opacity-60' : ''}`} style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
                           <div className="max-w-xs">
                             {order.items && order.items.length > 0 ? (
                               order.items.map((item, index) => (
@@ -270,11 +270,13 @@ export default function OrdersDashboard() {
                             )}
                           </div>
                         </td>
-                        <td className="px-6 py-2 text-white font-bold" style={{ fontFamily: 'Georgia', fontWeight: '300', color: '#FF6B00', textDecoration: order.status === 'cancelled' ? 'line-through' : 'none' }}>
+                        <td className={`px-6 py-2 text-white font-medium ${order.status === 'cancelled' ? 'line-through opacity-60' : ''}`} style={{ fontFamily: 'Georgia', fontWeight: '300', color: '#FF6B00' }}>
                           {formatPrice(order.total_amount)}
                         </td>
-                        <td className="px-6 py-2 text-white font-medium" style={{ fontFamily: 'Georgia', fontWeight: '300', textDecoration: order.status === 'cancelled' ? 'line-through' : 'none' }}>
-                          {order.note || '—'}
+                        <td className={`px-3 py-2 text-gray-300 ${order.status === 'cancelled' ? 'line-through opacity-60' : ''}`} style={{ fontFamily: 'Georgia', fontWeight: '300', maxWidth: '200px' }}>
+                          <div className="break-words whitespace-pre-wrap">
+                            {order.note || '—'}
+                          </div>
                         </td>
                         <td className={`px-6 py-2 ${order.status === 'cancelled' ? 'opacity-60' : ''}`}>
                           <button

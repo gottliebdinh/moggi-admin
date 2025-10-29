@@ -292,11 +292,6 @@ export default function SettingsDashboard() {
   return (
     <AdminLayout>
       <div className="space-y-8">
-        {/* Header Section */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-light mb-4 font-serif text-white">Einstellungen</h1>
-          <p className="text-lg text-gray-300">Verwalte Kapazitäts-Regeln und geschlossene Tage</p>
-        </div>
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
