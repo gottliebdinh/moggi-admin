@@ -55,7 +55,15 @@ export default function ReservationsDashboard() {
   }>({ visited: 0, noShow: 0, cancelled: 0 })
   const [capacityRules, setCapacityRules] = useState<CapacityRule[]>([])
   const [exceptions, setExceptions] = useState<Exception[]>([])
-  const [selectedDate, setSelectedDate] = useState<string>(currentDate.toISOString().split('T')[0])
+  // Hilfsfunktion: Konvertiere Date zu YYYY-MM-DD String im lokalen Format (nicht UTC)
+  const dateToLocalString = (date: Date): string => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  const [selectedDate, setSelectedDate] = useState<string>(dateToLocalString(new Date()))
   const [settingsLoading, setSettingsLoading] = useState<boolean>(true)
 
   // Email Modal State
@@ -146,7 +154,7 @@ export default function ReservationsDashboard() {
   useEffect(() => {
     const loadReservations = async () => {
       try {
-        const dateStr = currentDate.toISOString().split('T')[0]
+        const dateStr = dateToLocalString(currentDate)
         console.log('Loading reservations for date:', dateStr)
         
         const response = await fetch(`/api/reservations?date=${dateStr}`)
@@ -232,7 +240,7 @@ export default function ReservationsDashboard() {
     if (showDetailModal && selectedReservation) {
       const time = selectedReservation.time ? selectedReservation.time.substring(0, 5) : '19:30'
       const duration = selectedReservation.duration || 120
-      const date = selectedReservation.date || currentDate.toISOString().split('T')[0]
+      const date = selectedReservation.date || dateToLocalString(currentDate)
       setTimeSpan(calculateTimeSpan(time, duration))
       const capacity = calculateAvailableCapacity(time, duration, date)
       setEditModalCapacity(capacity)
@@ -470,7 +478,7 @@ export default function ReservationsDashboard() {
   // Hilfsfunktion: wähle Standardzeit (nächste volle Stunde heute, sonst erster Slot)
   const pickDefaultTimeForDate = (date: string, times: string[]): string | null => {
     if (times.length === 0) return null
-    const todayStr = new Date().toISOString().split('T')[0]
+    const todayStr = dateToLocalString(new Date())
     if (date !== todayStr) return times[0]
     const now = new Date()
     const nextHour = new Date(now)
@@ -636,7 +644,7 @@ export default function ReservationsDashboard() {
         ...reservation, 
         status: newStatus,
         guest_name: reservation.guest_name || 'Neue Reservierung',
-        date: reservation.date || new Date().toISOString().split('T')[0],
+        date: reservation.date || dateToLocalString(new Date()),
         time: reservation.time || '19:30',
         guests: reservation.guests || 2,
         duration: reservation.duration || 120,
@@ -755,7 +763,7 @@ Ihr Moggi-Team`
                   <input
                     ref={dateInputRef}
                     type="date"
-                    value={currentDate.toISOString().split('T')[0]}
+                    value={dateToLocalString(currentDate)}
                     onChange={(e) => {
                       const newDate = new Date(e.target.value)
                       setCurrentDate(newDate)
@@ -797,7 +805,7 @@ Ihr Moggi-Team`
                   setAddModalDuration(120) // Reset duration when opening modal
                   // Initialisiere verfügbare Tische für neue Reservierung mit der nächsten verfügbaren Zeit
                   setTimeout(() => {
-                    const date = currentDate.toISOString().split('T')[0]
+                    const date = dateToLocalString(currentDate)
                     setSelectedDate(date)
                     const duration = 120 // Standardwert aus dem Modal
                     const availableTimes = getAvailableTimesForDate(date, duration)
@@ -865,7 +873,7 @@ Ihr Moggi-Team`
                         // Berechne verfügbare Tische für diese Reservierung
                         const time = reservation.time || '19:30'
                         const duration = reservation.duration || 120
-                        const date = reservation.date || currentDate.toISOString().split('T')[0]
+                        const date = reservation.date || dateToLocalString(currentDate)
                         updateTableAvailability(time, duration, date, reservation.id)
                         // Initialisiere Kapazität
                         const capacity = calculateAvailableCapacity(time, duration, date)
@@ -1074,7 +1082,7 @@ Ihr Moggi-Team`
                             onChange={(e) => {
                               const duration = parseInt(e.target.value)
                               const time = (document.querySelector('select[id="edit-time"]') as HTMLSelectElement)?.value || '19:30'
-                              const date = (document.querySelector('input[id="edit-date"]') as HTMLInputElement)?.value || currentDate.toISOString().split('T')[0]
+                              const date = (document.querySelector('input[id="edit-date"]') as HTMLInputElement)?.value || dateToLocalString(currentDate)
                               setTimeSpan(calculateTimeSpan(time, duration))
                               updateTableAvailability(time, duration, date, selectedReservation?.id)
                               const capacity = calculateAvailableCapacity(time, duration, date)
@@ -1100,7 +1108,7 @@ Ihr Moggi-Team`
                             onChange={(e) => {
                               const time = e.target.value
                               const duration = parseInt((document.querySelector('select[id="edit-duration"]') as HTMLSelectElement)?.value || '120')
-                              const date = (document.querySelector('input[id="edit-date"]') as HTMLInputElement)?.value || currentDate.toISOString().split('T')[0]
+                              const date = (document.querySelector('input[id="edit-date"]') as HTMLInputElement)?.value || dateToLocalString(currentDate)
                               setTimeSpan(calculateTimeSpan(time, duration))
                               updateTableAvailability(time, duration, date, selectedReservation?.id)
                               const capacity = calculateAvailableCapacity(time, duration, date)
@@ -1110,7 +1118,7 @@ Ihr Moggi-Team`
                             style={{ backgroundColor: '#242424' }}
                           >
                             {(() => {
-                              const editDate = (document.querySelector('input[id="edit-date"]') as HTMLInputElement)?.value || selectedReservation?.date || currentDate.toISOString().split('T')[0]
+                              const editDate = (document.querySelector('input[id="edit-date"]') as HTMLInputElement)?.value || selectedReservation?.date || dateToLocalString(currentDate)
                               const duration = parseInt((document.querySelector('select[id="edit-duration"]') as HTMLSelectElement)?.value || '120')
                               const availableTimes = getAvailableTimesForDate(editDate, duration)
                               const currentTime = selectedReservation?.time ? selectedReservation.time.substring(0, 5) : "19:30"
@@ -1427,7 +1435,7 @@ Ihr Moggi-Team`
                           <label className="block text-sm text-white mb-2 font-medium">Datum</label>
                           <input
                             type="date"
-                            defaultValue={currentDate.toISOString().split('T')[0]}
+                            defaultValue={dateToLocalString(currentDate)}
                             id="date"
                             onChange={(e) => {
                               const date = e.target.value
@@ -1507,7 +1515,7 @@ Ihr Moggi-Team`
                             onChange={(e) => {
                               const time = e.target.value
                               const duration = addModalDuration
-                              const date = (document.querySelector('input[type="date"]') as HTMLInputElement)?.value || currentDate.toISOString().split('T')[0]
+                              const date = (document.querySelector('input[type="date"]') as HTMLInputElement)?.value || dateToLocalString(currentDate)
                               updateTableAvailability(time, duration, date)
                             }}
                             className="w-full border border-gray-500 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500 focus:ring-opacity-20 transition-all duration-300"
@@ -1524,7 +1532,7 @@ Ihr Moggi-Team`
                                 return <option value="">Restaurant geschlossen</option>
                               }
                               
-                              const addDate = (document.querySelector('input[type="date"]') as HTMLInputElement)?.value || selectedDate || currentDate.toISOString().split('T')[0]
+                              const addDate = (document.querySelector('input[type="date"]') as HTMLInputElement)?.value || selectedDate || dateToLocalString(currentDate)
                               // Initialisiere Kapazität mit der aktuellen Zeit
                               const currentTimeSelect = document.querySelector('select[id="time"]') as HTMLSelectElement
                               const currentTime = currentTimeSelect?.value || availableTimes[0] || ''
@@ -1687,7 +1695,7 @@ Ihr Moggi-Team`
 
                       // Erstelle neue Reservierung mit echten Daten
                       const newReservation = {
-                        date: date || currentDate.toISOString().split('T')[0],
+                        date: date || dateToLocalString(currentDate),
                         time: time || '19:30',
                         guestName: guestName ? guestName.trim() : '',
                         guests: guests,
