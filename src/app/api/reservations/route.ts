@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { reservations } from '@/lib/supabase-database'
+import { renderNoShowEmail } from '@/lib/emailTemplates'
+import { Resend } from 'resend'
 
 export async function GET(request: NextRequest) {
   try {
@@ -55,6 +57,11 @@ export async function PUT(request: NextRequest) {
   try {
     const { id, ...data } = await request.json()
     
+    // Lade die alte Reservierung, um zu prüfen ob Status geändert wurde
+    const oldReservation = await reservations.getById(id)
+    const oldStatus = oldReservation?.status
+    const newStatus = data.status || oldStatus || 'placed'
+    
     // Transformiere Frontend-Daten zu Supabase-Format
     const supabaseData = {
       date: data.date,
@@ -64,7 +71,7 @@ export async function PUT(request: NextRequest) {
       tables: data.tables,
       note: data.note,
       comment: data.comment,
-      status: data.status || 'placed',
+      status: newStatus,
       duration: data.duration || 120,
       phone: data.phone,
       email: data.email,
@@ -76,6 +83,48 @@ export async function PUT(request: NextRequest) {
     
     // Lade die aktualisierte Reservierung mit allen Feldern
     const updatedReservation = await reservations.getById(id)
+    
+    // Sende No-Show E-Mail wenn Status auf "no-show" geändert wurde
+    if (newStatus === 'no-show' && oldStatus !== 'no-show' && updatedReservation?.email) {
+      try {
+        const apiKey = process.env.RESEND_API_KEY
+        const fromEmail = process.env.RESEND_FROM || 'MOGGI <noreply@gdinh.de>'
+        
+        if (apiKey) {
+          const resend = new Resend(apiKey)
+          const emailHtml = renderNoShowEmail({
+            guestName: updatedReservation.guest_name,
+            date: updatedReservation.date,
+            time: updatedReservation.time,
+            guests: updatedReservation.guests,
+            email: updatedReservation.email,
+            phone: updatedReservation.phone,
+            note: updatedReservation.note,
+            reservationNumber: `RES-${id.slice(0, 6)}`
+          })
+          
+          const { error: emailError } = await resend.emails.send({
+            from: fromEmail,
+            to: updatedReservation.email,
+            subject: 'Deine Reservierung ist verfallen - MOGGI',
+            html: emailHtml,
+          })
+          
+          if (emailError) {
+            console.error('Fehler beim Senden der No-Show E-Mail:', emailError)
+            // Nicht blockierend - Status-Update war erfolgreich
+          } else {
+            console.log('✅ No-Show E-Mail erfolgreich gesendet an:', updatedReservation.email)
+          }
+        } else {
+          console.warn('RESEND_API_KEY nicht konfiguriert - No-Show E-Mail wird nicht gesendet')
+        }
+      } catch (emailError) {
+        console.error('Fehler beim Senden der No-Show E-Mail:', emailError)
+        // Nicht blockierend - Status-Update war erfolgreich
+      }
+    }
+    
     return NextResponse.json(updatedReservation)
   } catch (error) {
     console.error('Error updating reservation:', error)

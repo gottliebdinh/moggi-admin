@@ -21,8 +21,8 @@ export const adminSupabase = createClient(
 )
 
 // Hilfsfunktion um zu prüfen ob Supabase korrekt konfiguriert ist
+// Für Admin-Dashboard benötigen wir nur URL und Service Role Key (Anon Key wird nicht verwendet)
 export const isSupabaseConfigured = () => {
   return supabaseUrl !== 'https://placeholder.supabase.co' && 
-         supabaseAnonKey !== 'placeholder-anon-key' &&
          supabaseServiceKey !== 'placeholder-service-key'
 }
