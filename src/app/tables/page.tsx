@@ -47,39 +47,39 @@ export default function TablesDashboard() {
         // Fallback zu Dummy-Daten
         const dummyRooms: Room[] = [
           {
-            id: 1,
+            id: '1',
             name: 'Galerie',
             description: 'Oberer Bereich des Restaurants',
             tables: [
-              { id: 61, name: '61 Galerie oben', capacity: 2 },
-              { id: 51, name: '51 Galerie oben', capacity: 2 },
-              { id: 58, name: '58 Galerie oben', capacity: 2 },
-              { id: 60, name: '60 Galerie oben', capacity: 2 },
-              { id: 50, name: '50 Galerie oben', capacity: 3 },
-              { id: 62, name: '62 Galerie oben', capacity: 3 },
-              { id: 57, name: '57 Galerie oben', capacity: 4 },
-              { id: 53, name: '53 Galerie oben', capacity: 4 },
-              { id: 54, name: '54 Galerie oben', capacity: 4 },
-              { id: 55, name: '55 Galerie oben', capacity: 4 },
-              { id: 56, name: '56 Galerie oben', capacity: 4 },
-              { id: 59, name: '59 Galerie oben', capacity: 4 }
+              { id: '61', room_id: '1', name: '61 Galerie oben', capacity: 2 },
+              { id: '51', room_id: '1', name: '51 Galerie oben', capacity: 2 },
+              { id: '58', room_id: '1', name: '58 Galerie oben', capacity: 2 },
+              { id: '60', room_id: '1', name: '60 Galerie oben', capacity: 2 },
+              { id: '50', room_id: '1', name: '50 Galerie oben', capacity: 3 },
+              { id: '62', room_id: '1', name: '62 Galerie oben', capacity: 3 },
+              { id: '57', room_id: '1', name: '57 Galerie oben', capacity: 4 },
+              { id: '53', room_id: '1', name: '53 Galerie oben', capacity: 4 },
+              { id: '54', room_id: '1', name: '54 Galerie oben', capacity: 4 },
+              { id: '55', room_id: '1', name: '55 Galerie oben', capacity: 4 },
+              { id: '56', room_id: '1', name: '56 Galerie oben', capacity: 4 },
+              { id: '59', room_id: '1', name: '59 Galerie oben', capacity: 4 }
             ]
           },
           {
-            id: 2,
+            id: '2',
             name: 'Unten',
             description: 'Unterer Bereich des Restaurants',
             tables: [
-              { id: 1, name: '1 Tisch', capacity: 2 },
-              { id: 2, name: '2 Tisch', capacity: 4 },
-              { id: 3, name: '3 Tisch', capacity: 4 },
-              { id: 4, name: '4 Tisch', capacity: 6 },
-              { id: 5, name: '5 Tisch', capacity: 2 }
+              { id: '1', room_id: '2', name: '1 Tisch', capacity: 2 },
+              { id: '2', room_id: '2', name: '2 Tisch', capacity: 4 },
+              { id: '3', room_id: '2', name: '3 Tisch', capacity: 4 },
+              { id: '4', room_id: '2', name: '4 Tisch', capacity: 6 },
+              { id: '5', room_id: '2', name: '5 Tisch', capacity: 2 }
             ]
           }
         ]
         setRooms(dummyRooms)
-        setSelectedRoomId(1)
+        setSelectedRoomId('1')
       }
     }
     
@@ -156,7 +156,7 @@ export default function TablesDashboard() {
     }
   }
 
-  const editRoom = (roomId: number) => {
+  const editRoom = (roomId: string) => {
     const room = rooms.find(r => r.id === roomId)
     if (!room) return
     
@@ -164,7 +164,7 @@ export default function TablesDashboard() {
     setShowEditRoomModal(true)
   }
 
-  const editTable = (tableId: number) => {
+  const editTable = (tableId: string) => {
     const room = rooms.find(r => r.id === selectedRoomId)
     if (!room) return
 
@@ -505,7 +505,7 @@ export default function TablesDashboard() {
                     <label className="block text-sm text-white mb-2 font-medium">Beschreibung</label>
                     <input
                       type="text"
-                      value={editingRoom.description}
+                      value={editingRoom.description || ''}
                       onChange={(e) => setEditingRoom({ ...editingRoom, description: e.target.value })}
                       className="w-full border border-gray-500 rounded-xl px-4 py-3 text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500 focus:ring-opacity-20 transition-all duration-300"
                       style={{ backgroundColor: '#242424' }}

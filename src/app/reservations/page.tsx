@@ -731,26 +731,36 @@ Ihr Moggi-Team`
     })
   }
 
+  const formatDateCompact = (date: Date) => {
+    return date.toLocaleDateString('de-DE', {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    })
+  }
+
   const totalReservations = reservations.filter(res => res.status !== 'cancelled').length
   const totalGuests = reservations.filter(res => res.status !== 'cancelled').reduce((sum, res) => sum + res.guests, 0)
 
   return (
     <AdminLayout>
       <div className="space-y-4">
-        {/* Day Switcher - Compact */}
-        <div className="rounded-2xl p-3" style={{ backgroundColor: '#1A1A1A', borderWidth: '1px', borderColor: '#242424' }}>
-          <div className="flex justify-between items-center flex-wrap gap-4">
-            <div className="flex gap-3 items-center">
+        {/* Day Switcher - Compact, responsive bis 1024x768 */}
+        <div className="rounded-2xl p-2 lg:p-3" style={{ backgroundColor: '#1A1A1A', borderWidth: '1px', borderColor: '#242424' }}>
+          <div className="flex justify-between items-center gap-2 lg:gap-4 overflow-hidden">
+            <div className="flex gap-1.5 lg:gap-3 items-center flex-shrink-0 min-w-0">
               <button
                 onClick={() => changeDay(-1)}
-                className="text-white px-4 py-3 rounded-xl transition-all duration-300 hover:opacity-80 font-medium"
-                style={{ backgroundColor: '#FF6B00', fontSize: '16px', fontWeight: '300' }}
+                className="text-white px-1.5 lg:px-3 py-1.5 lg:py-2 rounded-xl transition-all duration-300 hover:opacity-80 font-medium text-xs lg:text-sm whitespace-nowrap flex-shrink-0"
+                style={{ backgroundColor: '#FF6B00', fontWeight: '300' }}
               >
-                ← Vorheriger
+                <span className="hidden lg:inline">← Vorheriger</span>
+                <span className="lg:hidden">←</span>
               </button>
-              <div className="relative">
+              <div className="relative flex-shrink-0">
                 <div 
-                  className="text-white px-6 py-3 rounded-xl font-semibold text-lg flex items-center gap-3 cursor-pointer relative" 
+                  className="text-white px-2 lg:px-4 py-1.5 lg:py-2 rounded-xl font-semibold text-xs lg:text-base flex items-center gap-1 lg:gap-2 cursor-pointer relative whitespace-nowrap" 
                   style={{ backgroundColor: '#FF6B00' }}
                   onClick={() => {
                     if (dateInputRef.current) {
@@ -758,8 +768,9 @@ Ihr Moggi-Team`
                     }
                   }}
                 >
-                  <span style={{ fontFamily: 'Georgia', fontWeight: '300' }}>{formatDate(currentDate)}</span>
-                  <Calendar className="w-5 h-5" />
+                  <span className="hidden lg:inline" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>{formatDate(currentDate)}</span>
+                  <span className="lg:hidden text-xs" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>{formatDateCompact(currentDate)}</span>
+                  <Calendar className="w-3 h-3 lg:w-4 lg:h-4 flex-shrink-0" />
                   <input
                     ref={dateInputRef}
                     type="date"
@@ -782,20 +793,21 @@ Ihr Moggi-Team`
               </div>
               <button
                 onClick={() => changeDay(1)}
-                className="text-white px-4 py-3 rounded-xl transition-all duration-300 hover:opacity-80 font-medium"
-                style={{ backgroundColor: '#FF6B00', fontSize: '16px', fontWeight: '300' }}
+                className="text-white px-1.5 lg:px-3 py-1.5 lg:py-2 rounded-xl transition-all duration-300 hover:opacity-80 font-medium text-xs lg:text-sm whitespace-nowrap flex-shrink-0"
+                style={{ backgroundColor: '#FF6B00', fontWeight: '300' }}
               >
-                Nächster →
+                <span className="hidden lg:inline">Nächster →</span>
+                <span className="lg:hidden">→</span>
               </button>
             </div>
 
-            <div className="flex gap-8 items-center">
-              <div className="text-center">
-                <div className="text-3xl font-bold text-white" style={{ color: '#FF6B00', fontFamily: 'Georgia', fontWeight: '300' }}>{totalReservations}</div>
+            <div className="flex gap-2 lg:gap-8 items-center flex-shrink-0 min-w-0">
+              <div className="text-center flex-shrink-0">
+                <div className="text-xl lg:text-3xl font-bold text-white whitespace-nowrap" style={{ color: '#FF6B00', fontFamily: 'Georgia', fontWeight: '300' }}>{totalReservations}</div>
                 <div className="text-xs text-gray-300 uppercase tracking-wider font-medium">Reservierungen</div>
               </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-white" style={{ color: '#FF6B00', fontFamily: 'Georgia', fontWeight: '300' }}>{totalGuests}</div>
+              <div className="text-center flex-shrink-0">
+                <div className="text-xl lg:text-3xl font-bold text-white whitespace-nowrap" style={{ color: '#FF6B00', fontFamily: 'Georgia', fontWeight: '300' }}>{totalGuests}</div>
                 <div className="text-xs text-gray-300 uppercase tracking-wider font-medium">Gäste</div>
               </div>
               <button
@@ -824,10 +836,11 @@ Ihr Moggi-Team`
                     }
                   }, 100) // Kurze Verzögerung damit das Modal gerendert ist
                 }}
-                className="text-white px-6 py-3 rounded-lg transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 flex items-center gap-2 font-medium border-2 border-orange-500 hover:bg-orange-500"
+                className="text-white px-2 lg:px-4 py-1.5 lg:py-2 rounded-lg transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 flex items-center gap-1 font-medium border-2 border-orange-500 hover:bg-orange-500 text-xs lg:text-sm whitespace-nowrap flex-shrink-0"
               >
-                <span className="text-lg">+</span>
-                Reservierung hinzufügen
+                <span className="text-xs lg:text-base">+</span>
+                <span className="hidden lg:inline">Reservierung hinzufügen</span>
+                <span className="lg:hidden">Hinzufügen</span>
               </button>
             </div>
           </div>

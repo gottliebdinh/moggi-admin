@@ -21,35 +21,35 @@ interface Exception {
 // Dummy-Daten als Konstanten
 const dummyCapacityRules: CapacityRule[] = [
   {
-    id: 1,
+    id: '1',
     days: ['tuesday', 'wednesday'],
-    startTime: '17:30',
-    endTime: '22:00',
+    start_time: '17:30',
+    end_time: '22:00',
     capacity: 120,
-    interval: 30
+    interval_minutes: 30
   },
   {
-    id: 2,
+    id: '2',
     days: ['tuesday', 'wednesday', 'thursday', 'friday', 'saturday'],
-    startTime: '11:30',
-    endTime: '14:00',
+    start_time: '11:30',
+    end_time: '14:00',
     capacity: 120,
-    interval: 30
+    interval_minutes: 30
   },
   {
-    id: 3,
+    id: '3',
     days: ['thursday', 'friday', 'saturday'],
-    startTime: '17:30',
-    endTime: '22:30',
+    start_time: '17:30',
+    end_time: '22:30',
     capacity: 120,
-    interval: 30
+    interval_minutes: 30
   }
 ]
 
 const dummyExceptions: Exception[] = [
-  { id: 1, date: '2024-12-25' },
-  { id: 2, date: '2024-12-26' },
-  { id: 3, date: '2024-01-01' }
+  { id: '1', date: '2024-12-25' },
+  { id: '2', date: '2024-12-26' },
+  { id: '3', date: '2024-01-01' }
 ]
 
 // Hilfsfunktion: Formatiere Zeit von HH:MM:SS auf HH:MM
@@ -316,7 +316,7 @@ export default function SettingsDashboard() {
                 >
                   <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
                     <div className="font-semibold text-orange-500" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
-                      {(typeof rule.days === 'string' ? JSON.parse(rule.days) : rule.days).map(day => dayNamesForDisplay[day as keyof typeof dayNamesForDisplay]).join(', ')}
+                      {(typeof rule.days === 'string' ? JSON.parse(rule.days) : rule.days).map((day: string) => dayNamesForDisplay[day as keyof typeof dayNamesForDisplay]).join(', ')}
                     </div>
                     <div className="text-white text-sm" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>
                       {formatTimeHHMM(rule.start_time)} - {formatTimeHHMM(rule.end_time)}

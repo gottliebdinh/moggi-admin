@@ -1,9 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
-import { WifiOff } from 'lucide-react'
+import { WifiOff, LogOut } from 'lucide-react'
 
 const navigation = [
   { name: 'Bestellungen', href: '/orders' },
@@ -18,7 +18,20 @@ export default function AdminLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
+  const router = useRouter()
   const [isOnline, setIsOnline] = useState(true)
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' })
+      router.push('/login')
+      router.refresh()
+    } catch (error) {
+      console.error('Logout error:', error)
+      // Trotzdem weiterleiten
+      router.push('/login')
+    }
+  }
 
   useEffect(() => {
     setIsOnline(navigator.onLine)
@@ -45,30 +58,41 @@ export default function AdminLayout({
         </div>
       )}
       
-      {/* Header & Navigation Combined */}
-      <div className="container mx-auto px-4 py-2">
+      {/* Header & Navigation Combined - Responsive */}
+      <div className="container mx-auto px-2 sm:px-4 py-2">
         <div 
-          className="rounded-2xl p-6 mb-2"
+          className="rounded-2xl p-4 sm:p-6 mb-2"
           style={{ 
             backgroundColor: '#1A1A1A',
             borderWidth: '1px',
             borderColor: '#242424'
           }}
         >
-          {/* Header Section */}
-          <div className="mb-2">
-            <h1 className="text-4xl font-light mb-1 text-white" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>MOGGI Admin</h1>
-            <div className="w-16 h-1 rounded mb-1" style={{ backgroundColor: '#FF6B00' }}></div>
-            <p className="text-white text-sm">Restaurant Management System</p>
+          {/* Header Section - Responsive */}
+          <div className="mb-2 flex justify-between items-start">
+            <div>
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-light mb-1 text-white" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>MOGGI Admin</h1>
+              <div className="w-12 sm:w-16 h-1 rounded mb-1" style={{ backgroundColor: '#FF6B00' }}></div>
+              <p className="text-white text-xs sm:text-sm">Restaurant Management System</p>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl transition-all duration-300 hover:opacity-80 text-xs sm:text-sm font-medium"
+              style={{ backgroundColor: '#242424', color: '#FF6B00' }}
+              title="Abmelden"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline">Abmelden</span>
+            </button>
           </div>
 
-          {/* Navigation Section */}
-          <nav className="flex gap-3 flex-wrap border-t pt-3" style={{ borderColor: '#242424' }}>
+          {/* Navigation Section - Responsive */}
+          <nav className="flex gap-2 sm:gap-3 flex-wrap border-t pt-3" style={{ borderColor: '#242424' }}>
             {navigation.map((item) => (
               <Link
                 key={item.name}
                 href={item.href}
-                className={`px-6 py-3 rounded-xl transition-all duration-300 font-medium text-sm ${
+                className={`px-3 sm:px-6 py-2 sm:py-3 rounded-xl transition-all duration-300 font-medium text-xs sm:text-sm ${
                   pathname === item.href
                     ? 'text-white'
                     : 'text-gray-300 hover:text-white'
@@ -77,7 +101,6 @@ export default function AdminLayout({
                   backgroundColor: pathname === item.href ? '#FF6B00' : '#242424',
                   fontFamily: 'Georgia',
                   fontWeight: pathname === item.href ? '600' : '300',
-                  fontSize: '16px'
                 }}
               >
                 {item.name}
@@ -87,15 +110,15 @@ export default function AdminLayout({
         </div>
       </div>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-2">
+      {/* Main Content - Responsive */}
+      <main className="container mx-auto px-2 sm:px-4 py-2">
         {children}
       </main>
 
-      {/* Footer */}
-      <footer style={{ backgroundColor: '#2D2D2D', borderTop: '1px solid #242424', marginTop: '64px' }}>
-        <div className="container mx-auto px-4 py-6 text-center text-gray-300">
-          <p style={{ fontFamily: 'Georgia', fontWeight: '300' }}>Made with <span style={{ color: '#FF0000' }}>♥</span> by Gottlieb Dinh</p>
+      {/* Footer - Responsive */}
+      <footer className="mt-8 sm:mt-16" style={{ backgroundColor: '#2D2D2D', borderTop: '1px solid #242424' }}>
+        <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6 text-center text-gray-300">
+          <p className="text-xs sm:text-sm" style={{ fontFamily: 'Georgia', fontWeight: '300' }}>Made with <span style={{ color: '#FF0000' }}>♥</span> by Gottlieb Dinh</p>
         </div>
       </footer>
     </div>
